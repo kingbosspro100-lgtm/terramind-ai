@@ -39,7 +39,8 @@ export default function Navbar() {
             <p className="mt-0.5 text-xs font-bold text-emerald-400 uppercase tracking-widest">{publicT.smartAgri}</p>
           </div>
         </Link>
-
+        <head>  <meta name="google-site-verification" content="3VhshAtSkjUvWJIfXxaD21HM1EmzjBSb6igoy4tZSlE" />
+        </head>
         <nav className="hidden items-center gap-3 lg:flex">
           {links.map((link) => (
             <Link
