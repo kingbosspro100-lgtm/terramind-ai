@@ -1,26 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/server";
-
-const DEFAULT_REVIEWS = [
-  {
-    id: "rev_default_1",
-    name: "Sessou Kpodanho",
-    location: "Bohicon, Zou",
-    rating: 5,
-    comment:
-      "TerraMind m'a beaucoup aidé à organiser mes parcelles de maïs et à identifier une carence par photo avant de perdre ma récolte.",
-    created_at: "2026-08-14T10:00:00Z",
-  },
-  {
-    id: "rev_default_2",
-    name: "Pascaline Tossou",
-    location: "Parakou, Borgou",
-    rating: 5,
-    comment:
-      "La météo exacte par département et la dictée vocale au champ me font gagner un temps précieux chaque jour.",
-    created_at: "2026-08-18T14:30:00Z",
-  },
-];
+import { getCurrentUser } from "@/lib/auth-helper";
+import { isAdmin } from "@/services/admin";
 
 export async function GET() {
   try {
@@ -28,21 +9,18 @@ export async function GET() {
     const { data, error } = await supabase
       .from("user_reviews")
       .select("*")
+      .eq("is_public", true)
       .order("created_at", { ascending: false });
 
     if (error) {
-      console.warn("Supabase user_reviews table GET notice:", error.message);
-      return NextResponse.json({ reviews: DEFAULT_REVIEWS });
+      console.warn("Supabase user_reviews GET notice:", error.message);
+      return NextResponse.json({ reviews: [] });
     }
 
-    if (!data || data.length === 0) {
-      return NextResponse.json({ reviews: DEFAULT_REVIEWS });
-    }
-
-    return NextResponse.json({ reviews: data });
+    return NextResponse.json({ reviews: data || [] });
   } catch (err: any) {
     console.error("GET /api/reviews error:", err);
-    return NextResponse.json({ reviews: DEFAULT_REVIEWS });
+    return NextResponse.json({ reviews: [] });
   }
 }
 
@@ -58,12 +36,16 @@ export async function POST(request: Request) {
       );
     }
 
+    const user = await getCurrentUser();
     const supabase = await createClient();
+
     const newReview = {
+      user_id: user?.id || null,
       name: name.trim(),
       location: (location || "Bénin").trim(),
-      rating: Number(rating) || 5,
+      rating: Math.min(5, Math.max(1, Number(rating) || 5)),
       comment: comment.trim(),
+      is_public: true,
       created_at: new Date().toISOString(),
     };
 
@@ -73,11 +55,11 @@ export async function POST(request: Request) {
       .select();
 
     if (error) {
-      console.warn("Supabase user_reviews POST notice:", error.message);
-      return NextResponse.json({
-        success: true,
-        review: { id: "rev_" + Date.now(), ...newReview },
-      });
+      console.error("Supabase user_reviews POST error:", error.message);
+      return NextResponse.json(
+        { error: `Erreur lors de l'enregistrement de l'avis: ${error.message}` },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({
@@ -95,6 +77,14 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
+    const admin = await isAdmin();
+    if (!admin) {
+      return NextResponse.json(
+        { error: "Accès non autorisé." },
+        { status: 403 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
 
@@ -109,12 +99,16 @@ export async function DELETE(request: Request) {
     const { error } = await supabase.from("user_reviews").delete().eq("id", id);
 
     if (error) {
-      console.warn("Supabase user_reviews DELETE notice:", error.message);
+      console.error("Supabase user_reviews DELETE error:", error.message);
+      return NextResponse.json(
+        { error: `Erreur lors de la suppression: ${error.message}` },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({
       success: true,
-      message: "Avis supprimé de Supabase.",
+      message: "Avis supprimé définitivement de Supabase.",
     });
   } catch (err: any) {
     console.error("DELETE /api/reviews error:", err);

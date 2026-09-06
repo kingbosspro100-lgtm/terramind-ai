@@ -63,17 +63,20 @@ export default function AdminAvisPage() {
     if (!confirm("Voulez-vous vraiment supprimer cet avis de Supabase ?")) return;
 
     try {
-      await fetch(`/api/reviews?id=${encodeURIComponent(id)}`, {
+      const res = await fetch(`/api/reviews?id=${encodeURIComponent(id)}`, {
         method: "DELETE",
       });
-      await supabase.from("user_reviews").delete().eq("id", id);
-    } catch (e) {}
-
-    const updated = reviews.filter((r) => r.id !== id);
-    setReviews(updated);
-
-    setMsg("Avis supprimé avec succès de Supabase.");
-    setTimeout(() => setMsg(""), 3000);
+      if (res.ok) {
+        setReviews((prev) => prev.filter((r) => r.id !== id));
+        setMsg("Avis supprimé avec succès de Supabase.");
+        setTimeout(() => setMsg(""), 3000);
+      } else {
+        const data = await res.json();
+        alert(data.error || "Impossible de supprimer l'avis.");
+      }
+    } catch (e) {
+      alert("Une erreur de réseau est survenue.");
+    }
   };
 
   const filteredReviews = reviews.filter(

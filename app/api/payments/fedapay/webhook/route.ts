@@ -69,6 +69,14 @@ export async function POST(request: Request) {
     const plan: Plan = (metadata.plan || paymentRecord?.plan || "pro") === "enterprise" ? "enterprise" : "pro";
     const expectedAmount = plan === "enterprise" ? 25000 : 2500;
 
+    // Calcul de l'expiration exacte à 1 mois jour/heure/minute/seconde
+    const startDate = new Date();
+    const expiresDate = new Date(startDate);
+    expiresDate.setMonth(expiresDate.getMonth() + 1);
+
+    const startedAtIso = startDate.toISOString();
+    const expiresAtIso = expiresDate.toISOString();
+
     // 4. Mettre à jour la table payments
     await supabase.from("payments").upsert(
       {
@@ -85,7 +93,7 @@ export async function POST(request: Request) {
       { onConflict: "reference" }
     );
 
-    // 5. Activer le plan dans la table subscriptions
+    // 5. Activer le plan dans la table subscriptions avec started_at et expires_at
     await supabase.from("subscriptions").upsert(
       {
         user_id: targetUserId,
@@ -93,6 +101,8 @@ export async function POST(request: Request) {
         status: "active",
         amount: expectedAmount,
         currency: "FCFA",
+        started_at: startedAtIso,
+        expires_at: expiresAtIso,
         updated_at: nowIso,
       },
       { onConflict: "user_id" }

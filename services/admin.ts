@@ -1,17 +1,15 @@
 import { createClient } from "@/lib/server";
+import { getCurrentUser } from "@/lib/auth-helper";
 
 export async function isAdmin() {
-  const supabase = await createClient();
+  const user = await getCurrentUser();
 
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
+  if (!user || !user.id) {
     console.log("Admin : utilisateur non authentifié");
     return false;
   }
+
+  const supabase = await createClient();
 
   const { data, error } = await supabase
     .from("admin_users")

@@ -54,15 +54,10 @@ export default function AvisPage() {
             return;
           }
         }
-      } catch (e) {}
-
-      // Fallback
-      const saved = localStorage.getItem("terramind_user_reviews");
-      if (saved) {
-        try {
-          setReviews(JSON.parse(saved));
-        } catch (e) {}
+      } catch (e) {
+        console.error("Error loading reviews:", e);
       }
+      setReviews([]);
     }
 
     loadReviews();

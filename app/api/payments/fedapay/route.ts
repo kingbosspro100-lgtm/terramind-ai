@@ -25,6 +25,32 @@ export async function POST(request: Request) {
     });
   }
 
+  const supabase = await createClient();
+
+  // 1b. Bloquer le double paiement si un abonnement actif existe déjà pour ce plan
+  try {
+    const { data: existingSub } = await supabase
+      .from("subscriptions")
+      .select("plan, status, expires_at")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (existingSub && existingSub.status === "active" && existingSub.plan === targetPlan) {
+      const isNotExpired = !existingSub.expires_at || new Date(existingSub.expires_at) > new Date();
+      if (isNotExpired) {
+        return NextResponse.json(
+          {
+            error: "ALREADY_SUBSCRIBED",
+            message: `Vous disposez déjà d'un abonnement actif pour la formule ${targetPlan.toUpperCase()}.`,
+          },
+          { status: 400 }
+        );
+      }
+    }
+  } catch (e) {
+    console.warn("Sub check notice:", e);
+  }
+
   // 2. Déterminer le montant strictement côté SERVEUR
   const amount = targetPlan === "enterprise" ? 25000 : 2500;
   const reference = `TX_FEDA_${targetPlan.toUpperCase()}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;

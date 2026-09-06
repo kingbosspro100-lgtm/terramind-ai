@@ -34,10 +34,17 @@ export async function middleware(request: NextRequest) {
 
   const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
 
-  // 1. Check Supabase Auth
+  let response = NextResponse.next({
+    request: {
+      headers: request.headers,
+    },
+  });
+
+  // 1. Check Supabase Auth and refresh cookies
   let hasSupabaseUser = false;
+  let currentUserId: string | null = null;
+
   try {
-    const response = NextResponse.next();
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -46,13 +53,20 @@ export async function middleware(request: NextRequest) {
           getAll() {
             return request.cookies.getAll();
           },
-          setAll() {},
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              request.cookies.set(name, value);
+              response.cookies.set(name, value, options);
+            });
+          },
         },
       }
     );
+
     const { data: { user } } = await supabase.auth.getUser();
     if (user && !user.email?.endsWith("@deleted.invalid") && !user.email?.startsWith("deleted_")) {
       hasSupabaseUser = true;
+      currentUserId = user.id;
     }
   } catch (e) {
     // ignore
@@ -62,7 +76,9 @@ export async function middleware(request: NextRequest) {
   let hasNextAuthSession = false;
   try {
     const session = await auth();
-    if (session?.user) hasNextAuthSession = true;
+    if (session?.user) {
+      hasNextAuthSession = true;
+    }
   } catch (e) {
     // ignore
   }
@@ -81,7 +97,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
-  return NextResponse.next();
+  return response;
 }
 
 export const config = {

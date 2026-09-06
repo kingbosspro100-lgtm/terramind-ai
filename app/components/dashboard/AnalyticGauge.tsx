@@ -62,32 +62,33 @@ export default function AnalyticGauge({
   const currentBalance = getBalance(currentMonthKey);
   const previousBalance = getBalance(previousMonthKey);
 
-  let evolution = 0;
+  const hasPreviousData = previousBalance !== 0;
+  let evolution: number | null = null;
 
-  if (previousBalance !== 0) {
-    evolution =
-      ((currentBalance - previousBalance) /
-        Math.abs(previousBalance)) *
-      100;
-  } else if (currentBalance !== 0) {
-    evolution = 100;
+  if (hasPreviousData) {
+    evolution = Number(
+      (
+        ((currentBalance - previousBalance) / Math.abs(previousBalance)) *
+        100
+      ).toFixed(1)
+    );
   }
 
-  evolution = Number(evolution.toFixed(1));
-
-  const isPositive = evolution >= 0;
+  const isPositive = evolution !== null && evolution >= 0;
 
   const totalDots = 28;
 
-  const activeDots = Math.min(
-    totalDots,
-    Math.max(
-      0,
-      Math.round(
-        (Math.abs(evolution) / 100) * totalDots
+  const activeDots = evolution !== null
+    ? Math.min(
+        totalDots,
+        Math.max(
+          0,
+          Math.round(
+            (Math.abs(evolution) / 100) * totalDots
+          )
+        )
       )
-    )
-  );
+    : 0;
 
   const dots = Array.from({
     length: totalDots,
@@ -164,32 +165,36 @@ export default function AnalyticGauge({
               Évolution
             </p>
 
-            <p className="mt-1 text-4xl font-extrabold text-white tracking-tight">
-              {evolution > 0 ? "+" : ""}
-              {evolution.toLocaleString("fr-FR")}%
-            </p>
+            {evolution !== null ? (
+              <>
+                <p className="mt-1 text-4xl font-extrabold text-white tracking-tight">
+                  {evolution > 0 ? "+" : ""}
+                  {evolution.toLocaleString("fr-FR")}%
+                </p>
 
-            {transactions.length > 0 ? (
-              <div
-                className={`mt-2 flex items-center gap-1 text-xs font-bold ${isPositive
-                    ? "text-[#00F5A0]"
-                    : "text-red-400"
+                <div
+                  className={`mt-2 flex items-center gap-1 text-xs font-bold ${
+                    isPositive ? "text-[#00F5A0]" : "text-red-400"
                   }`}
-              >
-                {isPositive ? (
-                  <ArrowUpRight className="h-4 w-4" />
-                ) : (
-                  <ArrowDownRight className="h-4 w-4" />
-                )}
+                >
+                  {isPositive ? (
+                    <ArrowUpRight className="h-4 w-4" />
+                  ) : (
+                    <ArrowDownRight className="h-4 w-4" />
+                  )}
 
-                <span>
-                  vs. mois précédent
-                </span>
-              </div>
+                  <span>vs. mois précédent</span>
+                </div>
+              </>
             ) : (
-              <p className="mt-2 text-xs text-slate-500">
-                Pas encore assez de données
-              </p>
+              <>
+                <p className="mt-2 text-sm font-bold text-amber-300">
+                  Données insuffisantes
+                </p>
+                <p className="mt-1 text-[11px] text-slate-400">
+                  Pas de comparaison disponible
+                </p>
+              </>
             )}
           </div>
         </div>

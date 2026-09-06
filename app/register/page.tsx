@@ -79,16 +79,18 @@ function RegisterFormContent() {
 
       if (error) {
         setErrorMsg(error.message || "Erreur lors de la création du compte.");
+      } else if (data?.user?.identities && data.user.identities.length === 0) {
+        setErrorMsg("Un compte avec cette adresse email existe déjà. Veuillez vous connecter.");
       } else {
         if (selectedPlan === "pro" || selectedPlan === "enterprise") {
           const checkoutUrl = `/checkout?plan=${selectedPlan}`;
           router.push(`/login?plan=${selectedPlan}&callbackUrl=${encodeURIComponent(checkoutUrl)}`);
         } else {
-          router.push("/");
+          router.push("/dashboard");
         }
       }
     } catch (err: any) {
-      setErrorMsg("Une erreur réseau est survenue.");
+      setErrorMsg(err?.message || "Une erreur de connexion est survenue.");
       console.error("Registration error:", err);
     } finally {
       setLoading(false);
@@ -139,7 +141,7 @@ function RegisterFormContent() {
   return (
     <div className="min-h-screen bg-[#0B0914] text-white flex flex-col justify-between selection:bg-emerald-600 selection:text-white">
       {/* Top Bar Link */}
-      <div className="p-6 max-w-7xl mx-auto w-full flex items-center justify-between">
+      <div className="p-4 sm:p-6 max-w-7xl mx-auto w-full flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
         <Link href="/" className="flex items-center gap-2">
           <Logo width={36} height={36} />
           <span className="text-xl font-bold tracking-tight text-white">
@@ -149,7 +151,7 @@ function RegisterFormContent() {
 
         <Link
           href={loginTargetUrl}
-          className="text-xs font-bold text-emerald-300 hover:text-white transition px-4 py-2 rounded-full border border-emerald-800/40 bg-[#0A100C]"
+          className="text-xs font-bold text-emerald-300 hover:text-white transition px-3.5 py-1.5 rounded-full border border-emerald-800/40 bg-[#0A100C] shrink-0"
         >
           Déjà un compte ? Se connecter
         </Link>

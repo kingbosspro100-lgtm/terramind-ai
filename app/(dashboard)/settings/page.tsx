@@ -157,14 +157,23 @@ export default function SettingsPage() {
     try {
       let publicUrl = "";
       try {
-        const path = `avatars/${profile.id || "demo_user"}/${Date.now()}_${file.name}`;
-        const { error: uploadError } = await supabase.storage
-          .from("avatars")
-          .upload(path, file, { upsert: true });
+        const { data: { user } } = await supabase.auth.getUser();
+        const targetUserId = user?.id || profile.id;
+        
+        if (targetUserId) {
+          const cleanFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+          const path = `${targetUserId}/${Date.now()}_${cleanFileName}`;
+          
+          const { error: uploadError } = await supabase.storage
+            .from("avatars")
+            .upload(path, file, { upsert: true });
 
-        if (!uploadError) {
-          const { data } = supabase.storage.from("avatars").getPublicUrl(path);
-          publicUrl = data?.publicUrl || "";
+          if (!uploadError) {
+            const { data } = supabase.storage.from("avatars").getPublicUrl(path);
+            publicUrl = data?.publicUrl || "";
+          } else {
+            console.warn("Storage avatar upload notice:", uploadError.message);
+          }
         }
       } catch (storageErr) {
         console.warn("Storage bucket error, falling back to base64 encoding:", storageErr);
@@ -179,14 +188,20 @@ export default function SettingsPage() {
       }
 
       setProfile((p) => ({ ...p, avatar_url: publicUrl }));
-      localStorage.setItem(`avatar_${profile.id || "demo_user"}`, publicUrl);
 
       try {
-        if (profile.id) {
+        const { data: { user } } = await supabase.auth.getUser();
+        const targetUserId = user?.id || profile.id;
+
+        if (targetUserId) {
+          localStorage.setItem(`avatar_${targetUserId}`, publicUrl);
           await supabase.from("users_profile").upsert({
-            id: profile.id,
+            id: targetUserId,
             avatar_url: publicUrl,
             updated_at: new Date().toISOString(),
+          });
+          await supabase.auth.updateUser({
+            data: { avatar_url: publicUrl, picture: publicUrl },
           });
         }
       } catch (dbErr) {

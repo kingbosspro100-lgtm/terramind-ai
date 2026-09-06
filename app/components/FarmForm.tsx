@@ -99,6 +99,19 @@ export default function FarmForm() {
       return;
     }
 
+    const normCountry = country.trim().toLowerCase();
+    if (normCountry !== "bénin" && normCountry !== "benin" && normCountry !== "bj") {
+      setDialogCustom({
+        isOpen: true,
+        title: "Pays indisponible",
+        message: "TerraMind AI est actuellement disponible uniquement pour les exploitations situées au Bénin.",
+        ctaText: "OK",
+        onCtaClick: undefined,
+        icon: <AlertCircle size={28} className="text-amber-400" />,
+      });
+      return;
+    }
+
     try {
       setLoading(true);
 

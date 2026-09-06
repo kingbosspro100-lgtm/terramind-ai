@@ -45,10 +45,19 @@ export async function updateTransaction(
 ) {
   const supabase = createClient();
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    throw new Error("Utilisateur non connecté.");
+  }
+
   const { data, error } = await supabase
     .from("transactions")
     .update(transaction)
     .eq("id", id)
+    .eq("user_id", user.id)
     .select();
 
   if (error) throw error;
@@ -59,10 +68,19 @@ export async function updateTransaction(
 export async function deleteTransaction(id: string) {
   const supabase = createClient();
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    throw new Error("Utilisateur non connecté.");
+  }
+
   const { error } = await supabase
     .from("transactions")
     .delete()
-    .eq("id", id);
+    .eq("id", id)
+    .eq("user_id", user.id);
 
   if (error) throw error;
 }

@@ -16,13 +16,16 @@ export async function POST() {
     const supabase = await createClient();
     const userId = user.id;
 
-    // 1. Clean up user database records
+    // 1. Clean up user database records across all user tables
     try {
       await supabase.from("crops").delete().eq("user_id", userId);
-      await supabase.from("financial_transactions").delete().eq("user_id", userId);
+      await supabase.from("transactions").delete().eq("user_id", userId);
       await supabase.from("stock").delete().eq("user_id", userId);
       await supabase.from("farms").delete().eq("user_id", userId);
       await supabase.from("subscriptions").delete().eq("user_id", userId);
+      await supabase.from("payments").delete().eq("user_id", userId);
+      await supabase.from("ai_usage").delete().eq("user_id", userId);
+      await supabase.from("ai_weekly_ads").delete().eq("user_id", userId);
       await supabase.from("users_profile").delete().eq("id", userId);
     } catch (dbErr) {
       console.warn("Notice during user tables cleanup:", dbErr);

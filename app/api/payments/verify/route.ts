@@ -81,7 +81,14 @@ export async function POST(request: Request) {
       { onConflict: "reference" }
     );
 
-    // 4. Activer le plan dans subscriptions
+    const startDate = new Date();
+    const expiresDate = new Date(startDate);
+    expiresDate.setMonth(expiresDate.getMonth() + 1);
+
+    const startedAtIso = startDate.toISOString();
+    const expiresAtIso = expiresDate.toISOString();
+
+    // 4. Activer le plan dans subscriptions avec started_at et expires_at (1 mois)
     await supabase.from("subscriptions").upsert(
       {
         user_id: user.id,
@@ -89,6 +96,8 @@ export async function POST(request: Request) {
         status: "active",
         amount: expectedAmount,
         currency: "FCFA",
+        started_at: startedAtIso,
+        expires_at: expiresAtIso,
         updated_at: nowIso,
       },
       { onConflict: "user_id" }

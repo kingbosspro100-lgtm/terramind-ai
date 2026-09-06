@@ -1,5 +1,11 @@
 import { createClient } from "@/lib/client";
 
+export function isBeninCountry(country: string): boolean {
+  if (!country) return false;
+  const normalized = country.trim().toLowerCase();
+  return normalized === "bénin" || normalized === "benin" || normalized === "bj";
+}
+
 export async function createFarm(farm: {
   name: string;
   country: string;
@@ -10,6 +16,10 @@ export async function createFarm(farm: {
   longitude?: number | null;
   gps_coordinates?: string | null;
 }) {
+  if (!isBeninCountry(farm.country)) {
+    throw new Error("TerraMind AI est actuellement disponible uniquement pour les exploitations situées au Bénin.");
+  }
+
   const supabase = createClient();
 
   const {
@@ -64,10 +74,19 @@ export async function getFarms() {
 export async function deleteFarm(id: string) {
   const supabase = createClient();
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    throw new Error("Utilisateur non connecté.");
+  }
+
   const { error } = await supabase
     .from("farms")
     .delete()
-    .eq("id", id);
+    .eq("id", id)
+    .eq("user_id", user.id);
 
   if (error) throw error;
 }
@@ -85,7 +104,19 @@ export async function updateFarm(
     gps_coordinates?: string | null;
   }
 ) {
+  if (!isBeninCountry(farm.country)) {
+    throw new Error("TerraMind AI est actuellement disponible uniquement pour les exploitations situées au Bénin.");
+  }
+
   const supabase = createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    throw new Error("Utilisateur non connecté.");
+  }
 
   const { gps_coordinates, ...farmPayload } = farm;
 
@@ -97,6 +128,7 @@ export async function updateFarm(
       longitude: farm.longitude ?? null,
     })
     .eq("id", id)
+    .eq("user_id", user.id)
     .select();
 
   if (error) throw error;

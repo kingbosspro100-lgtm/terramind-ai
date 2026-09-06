@@ -45,6 +45,12 @@ export default function EditButton({
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
+    const normCountry = farmCountry.trim().toLowerCase();
+    if (normCountry !== "bénin" && normCountry !== "benin" && normCountry !== "bj") {
+      showToast("TerraMind AI est actuellement disponible uniquement pour les exploitations situées au Bénin.", "error");
+      return;
+    }
+
     setLoading(true);
     try {
       await updateFarm(id, {
@@ -58,9 +64,9 @@ export default function EditButton({
       setOpen(false);
       router.refresh();
       showToast("Exploitation modifiée avec succès.", "success");
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      showToast("Impossible de modifier l'exploitation.", "error");
+      showToast(error?.message || "Impossible de modifier l'exploitation.", "error");
     } finally {
       setLoading(false);
     }
