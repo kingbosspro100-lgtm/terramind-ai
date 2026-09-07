@@ -10,9 +10,12 @@ export async function GET(request: NextRequest) {
   if (token_hash && type) {
     const response = NextResponse.redirect(`${origin}${next}`);
 
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://zjqepfcahnvlxyexymer.supabase.co";
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "sb_publishable_vR7j-YWPlqEM54Ems6W74w_dmnIc0qQ";
+
     const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      supabaseUrl,
+      supabaseAnonKey,
       {
         cookies: {
           getAll() {

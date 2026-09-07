@@ -80,7 +80,7 @@ export default function PricingPage() {
     const registerRedirectUrl = `/register?plan=${targetPlan}`;
 
     try {
-      const res = await fetch("/api/payments/fedapay", {
+      const res = await fetch("/api/payments/saspay", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ plan: targetPlan }),

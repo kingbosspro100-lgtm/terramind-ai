@@ -1,15 +1,15 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth-helper";
 import { createClient } from "@/lib/server";
-import { createFedaPayTransaction } from "@/services/fedapay";
+import { createSasPayTransaction } from "@/services/saspay";
 
 export async function POST(request: Request) {
-  // 1. Récupérer l'utilisateur authentifié
+  // 1. Authentification requise
   const user = await getCurrentUser();
 
   if (!user || !user.id) {
     return NextResponse.json(
-      { error: "UNAUTHORIZED", message: "Authentification requise pour souscrire un abonnement." },
+      { error: "UNAUTHORIZED", message: "Vous devez être connecté pour souscrire un abonnement." },
       { status: 401 }
     );
   }
@@ -20,14 +20,14 @@ export async function POST(request: Request) {
   if (targetPlan === "free") {
     return NextResponse.json({
       success: true,
-      message: "L'offre FREE est gratuite. Aucun paiement FedaPay n'est requis.",
+      message: "L'offre FREE est gratuite. Aucun paiement SASPAY n'est requis.",
       plan: "free",
     });
   }
 
   const supabase = await createClient();
 
-  // 1b. Bloquer le double paiement si un abonnement actif existe déjà pour ce plan
+  // 2. Vérifier si un abonnement actif existe déjà pour ce plan
   try {
     const { data: existingSub } = await supabase
       .from("subscriptions")
@@ -51,42 +51,29 @@ export async function POST(request: Request) {
     console.warn("Sub check notice:", e);
   }
 
-  // 2. Déterminer le montant strictement côté SERVEUR
+  // 3. Montant calculé strictement CÔTÉ SERVEUR (Jamais depuis le frontend)
   const amount = targetPlan === "enterprise" ? 25000 : 2500;
-  const reference = `TX_FEDA_${targetPlan.toUpperCase()}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+  const reference = `TX_SASPAY_${targetPlan.toUpperCase()}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
   const description = `Abonnement TerraMind AI ${targetPlan.toUpperCase()} (${amount} FCFA/mois)`;
 
   const origin = request.headers.get("origin") || process.env.NEXT_PUBLIC_SITE_URL || "https://terramind.ai";
   const callbackUrl = `${origin}/checkout?reference=${reference}&plan=${targetPlan}`;
 
   try {
-    const supabase = await createClient();
     const nowIso = new Date().toISOString();
 
-    // 3. Créer la transaction FedaPay via l'API REST officielle FedaPay
-    const fedapayRes = await createFedaPayTransaction({
+    // 4. Initialiser la transaction auprès de SASPAY
+    const saspayRes = await createSasPayTransaction({
       amount,
       description,
-      customerEmail: user.email || undefined,
-      customerFirstname: user.name?.split(" ")[0] || "Client",
-      customerLastname: user.name?.split(" ").slice(1).join(" ") || "TerraMind",
       reference,
+      plan: targetPlan,
+      customerEmail: user.email || undefined,
+      customerName: user.name || "Utilisateur TerraMind",
       callbackUrl,
-      customMetadata: {
-        user_id: user.id,
-        plan: targetPlan,
-        reference,
-      },
     });
 
-    if (!fedapayRes.success) {
-      return NextResponse.json(
-        { error: "FEDAPAY_ERROR", message: fedapayRes.message || "Échec de création de transaction FedaPay." },
-        { status: 500 }
-      );
-    }
-
-    // 4. Conserver la transaction dans la table payments avec le statut pending
+    // Enregistrer l'intention de paiement dans la table payments avec le statut pending
     await supabase.from("payments").upsert(
       {
         user_id: user.id,
@@ -95,25 +82,50 @@ export async function POST(request: Request) {
         currency: "FCFA",
         reference,
         status: "pending",
-        provider: "fedapay",
-        provider_transaction_id: fedapayRes.transactionId ? String(fedapayRes.transactionId) : null,
+        provider: "saspay",
+        provider_transaction_id: saspayRes.transactionId || null,
         updated_at: nowIso,
       },
       { onConflict: "reference" }
     );
+
+    if (saspayRes.requiresManualConfig) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "SASPAY_CONFIG_REQUIRED",
+          message: saspayRes.message || "Le module de paiement SASPAY nécessite la configuration des clés secrètes dans les variables d'environnement du serveur.",
+          reference,
+          amount,
+          plan: targetPlan,
+          redirectUrl: callbackUrl,
+        },
+        { status: 503 }
+      );
+    }
+
+    if (!saspayRes.success) {
+      return NextResponse.json(
+        {
+          error: "SASPAY_ERROR",
+          message: saspayRes.message || "Échec d'initialisation du paiement SASPAY.",
+        },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({
       success: true,
       reference,
       amount,
       plan: targetPlan,
-      transactionId: fedapayRes.transactionId,
-      redirectUrl: fedapayRes.redirectUrl || callbackUrl,
+      transactionId: saspayRes.transactionId,
+      redirectUrl: saspayRes.redirectUrl || callbackUrl,
     });
   } catch (error: any) {
-    console.error("Erreur création paiement FedaPay:", error);
+    console.error("Erreur serveur création paiement SASPAY:", error);
     return NextResponse.json(
-      { error: "INTERNAL_ERROR", message: "Une erreur est survenue lors de l'initialisation du paiement FedaPay." },
+      { error: "INTERNAL_ERROR", message: "Une erreur est survenue lors de l'initialisation du paiement SASPAY." },
       { status: 500 }
     );
   }

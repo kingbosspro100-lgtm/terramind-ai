@@ -4,14 +4,12 @@ import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
-  CreditCard,
-  Smartphone,
   ShieldCheck,
   CheckCircle2,
   AlertCircle,
   Loader2,
   ArrowRight,
-  Sparkles,
+  HelpCircle,
 } from "lucide-react";
 import Logo from "@/app/components/ui/Logo";
 
@@ -21,22 +19,25 @@ function CheckoutContent() {
 
   const plan = searchParams.get("plan") === "enterprise" ? "enterprise" : "pro";
   const amount = plan === "enterprise" ? "25 000" : "2 500";
-  const refFromUrl = searchParams.get("reference") || searchParams.get("tx_ref") || `TX_FEDA_${plan.toUpperCase()}_${Date.now()}`;
+  const refFromUrl = searchParams.get("reference") || searchParams.get("tx_ref") || "";
   const txIdFromUrl = searchParams.get("tx_id") || searchParams.get("id") || "";
 
-  const [statusState, setStatusState] = useState<"idle" | "verifying" | "approved" | "pending" | "failed">("idle");
+  const [statusState, setStatusState] = useState<"idle" | "verifying" | "approved" | "pending" | "failed" | "config_required">("idle");
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
+  const [currentRef, setCurrentRef] = useState(refFromUrl);
 
-  // Initialisation automatique du paiement si pas encore de référence
+  // Initialisation automatique du paiement SASPAY si pas encore de référence
   useEffect(() => {
     async function initPayment() {
-      if (refFromUrl || txIdFromUrl) return;
+      if (currentRef || txIdFromUrl) return;
 
       setLoading(true);
+      setErrorMsg("");
+
       try {
-        const res = await fetch("/api/payments/fedapay", {
+        const res = await fetch("/api/payments/saspay", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ plan }),
@@ -49,25 +50,37 @@ function CheckoutContent() {
         }
 
         const data = await res.json();
+
+        if (res.status === 503 || data.error === "SASPAY_CONFIG_REQUIRED") {
+          setStatusState("config_required");
+          setErrorMsg(data.message || "Le module SASPAY nécessite la configuration des clés d'API dans .env.local.");
+          if (data.reference) setCurrentRef(data.reference);
+          return;
+        }
+
         if (data.redirectUrl) {
           window.location.href = data.redirectUrl;
         } else if (data.reference) {
+          setCurrentRef(data.reference);
           router.replace(`/checkout?plan=${plan}&reference=${data.reference}`);
+        } else {
+          setErrorMsg(data.message || "Impossible d'initialiser le paiement SASPAY.");
         }
       } catch (err) {
-        setErrorMsg("Erreur lors de l'initialisation du paiement FedaPay.");
+        setErrorMsg("Erreur de connexion lors de l'initialisation du paiement SASPAY.");
       } finally {
         setLoading(false);
       }
     }
 
     initPayment();
-  }, [plan, refFromUrl, txIdFromUrl, router]);
+  }, [plan, currentRef, txIdFromUrl, router]);
 
-  // Vérification automatique au retour du guichet FedaPay
+  // Vérification automatique auprès de l'API SASPAY au retour
   useEffect(() => {
-    async function verifyFedaPayReturn() {
-      if (!refFromUrl && !txIdFromUrl) return;
+    async function verifySasPayReturn() {
+      if (!currentRef && !txIdFromUrl) return;
+      if (statusState === "config_required") return;
 
       setStatusState("verifying");
       setLoading(true);
@@ -77,7 +90,7 @@ function CheckoutContent() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            reference: refFromUrl,
+            reference: currentRef,
             transactionId: txIdFromUrl,
             plan,
           }),
@@ -87,30 +100,32 @@ function CheckoutContent() {
 
         if (res.ok && data.success) {
           setStatusState("approved");
-          setSuccessMsg(`Paiement FedaPay confirmé avec succès ! Abonnement TerraMind ${plan.toUpperCase()} activé.`);
+          setSuccessMsg(`Paiement SASPAY confirmé ! Abonnement TerraMind ${plan.toUpperCase()} activé pour 1 mois.`);
           setTimeout(() => {
             router.push("/dashboard");
             router.refresh();
           }, 2000);
         } else {
-          if (data.status === "pending") {
-            setStatusState("pending");
-            setErrorMsg("Paiement FedaPay en attente de validation. Nous activons votre abonnement dès confirmation.");
+          if (data.error === "SASPAY_CONFIG_REQUIRED") {
+            setStatusState("config_required");
+            setErrorMsg(data.message);
           } else {
-            setStatusState("failed");
-            setErrorMsg(data.message || "Le paiement FedaPay a échoué ou a été annulé.");
+            setStatusState("pending");
+            setErrorMsg(data.message || "Le paiement SASPAY n'a pas encore été confirmé par les serveurs.");
           }
         }
       } catch (err) {
         setStatusState("failed");
-        setErrorMsg("Erreur de communication avec le serveur pour la vérification du paiement.");
+        setErrorMsg("Erreur réseau lors de la vérification du paiement avec les serveurs SASPAY.");
       } finally {
         setLoading(false);
       }
     }
 
-    verifyFedaPayReturn();
-  }, [refFromUrl, txIdFromUrl, plan, router]);
+    if (currentRef || txIdFromUrl) {
+      verifySasPayReturn();
+    }
+  }, [currentRef, txIdFromUrl, plan, router, statusState]);
 
   const handleManualVerify = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -123,7 +138,7 @@ function CheckoutContent() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          reference: refFromUrl,
+          reference: currentRef,
           transactionId: txIdFromUrl,
           plan,
         }),
@@ -132,17 +147,22 @@ function CheckoutContent() {
       const data = await res.json();
 
       if (!res.ok || !data.success) {
-        setErrorMsg(data.message || "Paiement en cours ou non confirmé par FedaPay.");
+        if (data.error === "SASPAY_CONFIG_REQUIRED") {
+          setStatusState("config_required");
+        } else {
+          setStatusState("pending");
+        }
+        setErrorMsg(data.message || "Paiement non encore confirmé par SASPAY.");
       } else {
         setStatusState("approved");
-        setSuccessMsg(`Paiement FedaPay validé ! Votre formule ${plan.toUpperCase()} est active.`);
+        setSuccessMsg(`Paiement validé ! Votre formule ${plan.toUpperCase()} est active pour 1 mois.`);
         setTimeout(() => {
           router.push("/dashboard");
           router.refresh();
         }, 1500);
       }
     } catch (err) {
-      setErrorMsg("Erreur réseau lors de la validation.");
+      setErrorMsg("Erreur de connexion lors de la vérification.");
     } finally {
       setLoading(false);
     }
@@ -153,27 +173,33 @@ function CheckoutContent() {
       <div className="text-center space-y-2">
         <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-950/50 px-3.5 py-1 text-xs font-semibold text-emerald-300">
           <ShieldCheck className="h-4 w-4 text-emerald-400" />
-          <span>Guichet de Paiement Sécurisé FedaPay</span>
+          <span>Guichet de Paiement Sécurisé SASPAY</span>
         </div>
         <h1 className="text-2xl font-extrabold text-white tracking-tight">
           Abonnement {plan.toUpperCase()}
         </h1>
-        <p className="text-xs text-emerald-200/80 font-medium">
-          Réf: <span className="font-mono text-emerald-400">{refFromUrl}</span>
-        </p>
+        {currentRef && (
+          <p className="text-xs text-emerald-200/80 font-medium">
+            Réf: <span className="font-mono text-emerald-400">{currentRef}</span>
+          </p>
+        )}
       </div>
 
-      {/* Summary Box */}
+      {/* Résumé de la commande */}
       <div className="rounded-2xl bg-[#0A100C] border border-emerald-900/40 p-5 space-y-3">
         <div className="flex items-center justify-between text-sm">
           <span className="text-slate-300 font-semibold">Formule choisie :</span>
           <span className="font-bold text-white uppercase">{plan}</span>
         </div>
         <div className="flex items-center justify-between text-sm">
-          <span className="text-slate-300 font-semibold">Prestataire :</span>
+          <span className="text-slate-300 font-semibold">Moyen de paiement :</span>
           <span className="font-bold text-emerald-400 flex items-center gap-1">
-            FedaPay Mobile Money / Carte
+            SASPAY (Mobile Money / Carte)
           </span>
+        </div>
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-slate-300 font-semibold">Durée de l'abonnement :</span>
+          <span className="font-bold text-emerald-300">1 mois exact (depuis confirmation)</span>
         </div>
         <div className="pt-3 border-t border-emerald-900/30 flex items-center justify-between">
           <span className="text-base font-extrabold text-white">Montant :</span>
@@ -196,34 +222,50 @@ function CheckoutContent() {
         </div>
       )}
 
-      {/* Verification State Box */}
+      {/* Info de configuration manuelle SASPAY */}
+      {statusState === "config_required" && (
+        <div className="rounded-2xl bg-amber-950/50 border border-amber-500/40 p-5 space-y-3">
+          <div className="flex items-center gap-2 text-amber-300 text-xs font-bold">
+            <HelpCircle className="h-4 w-4 text-amber-400 shrink-0" />
+            <span>Configuration manuelle SASPAY requise</span>
+          </div>
+          <p className="text-xs text-amber-200/80 leading-relaxed font-medium">
+            Pour finaliser les paiements en direct via SASPAY, veuillez ajouter vos clés de production ou de sandbox dans le fichier <code className="bg-amber-950 px-1.5 py-0.5 rounded text-amber-300">.env.local</code> du serveur :
+          </p>
+          <pre className="text-[11px] bg-[#0A100C] p-3 rounded-xl border border-amber-900/40 font-mono text-amber-200 overflow-x-auto">
+            SASPAY_SECRET_KEY=votre_cle_secrete_saspay
+          </pre>
+        </div>
+      )}
+
+      {/* État de vérification */}
       {statusState === "verifying" ? (
         <div className="rounded-2xl bg-[#0A100C] border border-emerald-500/30 p-8 text-center space-y-3">
           <Loader2 className="h-8 w-8 text-emerald-400 animate-spin mx-auto" />
-          <p className="text-sm font-bold text-white">Vérification du paiement FedaPay en cours…</p>
-          <p className="text-xs text-emerald-200/60">Interrogation des serveurs FedaPay pour confirmation.</p>
+          <p className="text-sm font-bold text-white">Vérification du paiement auprès de SASPAY...</p>
+          <p className="text-xs text-emerald-200/60">Interrogation sécurisée des serveurs SASPAY pour confirmation.</p>
         </div>
       ) : statusState === "approved" ? (
         <div className="rounded-2xl bg-emerald-950/40 border border-emerald-500/40 p-6 text-center space-y-3">
           <CheckCircle2 className="h-10 w-10 text-emerald-400 mx-auto animate-bounce" />
-          <p className="text-base font-extrabold text-white">Paiement Réussi !</p>
-          <p className="text-xs text-emerald-200/80">Redirection vers votre tableau de bord…</p>
+          <p className="text-base font-extrabold text-white">Paiement Confirmé !</p>
+          <p className="text-xs text-emerald-200/80">Redirection vers votre tableau de bord...</p>
         </div>
       ) : (
         <form onSubmit={handleManualVerify} className="space-y-4">
           <button
             type="submit"
             disabled={loading}
-            className="w-full flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 py-4 text-xs font-bold text-white shadow-xl shadow-emerald-600/30 hover:opacity-95 transition disabled:opacity-50"
+            className="w-full flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 py-4 text-xs font-bold text-white shadow-xl shadow-emerald-600/30 hover:opacity-95 transition disabled:opacity-50 cursor-pointer"
           >
             {loading ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                <span>Vérification auprès de FedaPay…</span>
+                <span>Vérification auprès de SASPAY...</span>
               </>
             ) : (
               <>
-                <span>Vérifier la confirmation du paiement</span>
+                <span>Vérifier la confirmation du paiement SASPAY</span>
                 <ArrowRight className="h-4 w-4" />
               </>
             )}
@@ -251,7 +293,7 @@ export default function CheckoutPage() {
 
       <main className="flex-1 flex items-center justify-center p-6 relative overflow-hidden">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[450px] h-[450px] bg-emerald-600/15 rounded-full blur-3xl pointer-events-none" />
-        <Suspense fallback={<div className="text-emerald-400 font-bold">Chargement FedaPay...</div>}>
+        <Suspense fallback={<div className="text-emerald-400 font-bold">Chargement SASPAY...</div>}>
           <CheckoutContent />
         </Suspense>
       </main>

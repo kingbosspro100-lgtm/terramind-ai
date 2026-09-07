@@ -54,13 +54,21 @@ function LoginForm() {
       });
 
       if (error) {
-        setErrorMsg(error.message || "Identifiants incorrects. Veuillez réessayer.");
+        if (error.message?.includes("Invalid login credentials")) {
+          setErrorMsg("Adresse email ou mot de passe incorrect.");
+        } else if (error.message?.includes("Failed to fetch")) {
+          setErrorMsg("Impossible de contacter le serveur d'authentification. Vérifiez votre connexion internet.");
+        } else {
+          setErrorMsg(error.message || "Identifiants incorrects. Veuillez réessayer.");
+        }
       } else {
         router.push(callbackUrl);
         router.refresh();
       }
     } catch (err: any) {
-      setErrorMsg("Une erreur réseau est survenue.");
+      setErrorMsg(err?.message?.includes("Failed to fetch")
+        ? "Impossible de contacter le serveur d'authentification."
+        : "Une erreur réseau est survenue.");
     } finally {
       setLoading(false);
     }
