@@ -1,4 +1,5 @@
-"use client";
+
+      "use client";
 
 import Link from "next/link";
 import { Check, Sparkles, ArrowRight, Building } from "lucide-react";
@@ -69,7 +70,6 @@ export default function PricingPage() {
       "Exploitations & coopératives illimitées (multi-utilisateurs)",
       "Analyses agronomiques avancées & suivi du rendement",
       "Gestion complète des stocks & bilans financiers",
-
     ];
 
   const handlePlanSubscribe = async (targetPlan: "free" | "pro" | "enterprise") => {
@@ -77,7 +77,10 @@ export default function PricingPage() {
       window.location.href = "/register?plan=free";
       return;
     }
-    const registerRedirectUrl = `/register?plan=${targetPlan}`;
+
+    // Récupération des deux liens de paiement Saspay configurés sur Vercel
+    const saspayProUrl = process.env.NEXT_PUBLIC_SASPAY_PAYMENT_URL;
+    const saspayEnterpriseUrl = process.env.NEXT_PUBLIC_SASPAY_PAYMENT_URL_2;
 
     try {
       const res = await fetch("/api/payments/saspay", {
@@ -85,18 +88,25 @@ export default function PricingPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ plan: targetPlan }),
       });
-      if (res.status === 401) {
-        window.location.href = registerRedirectUrl;
-        return;
-      }
-      const data = await res.json();
-      if (data.redirectUrl) {
-        window.location.href = data.redirectUrl;
-      } else {
-        window.location.href = `/checkout?plan=${targetPlan}&reference=${data.reference || ""}`;
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.redirectUrl) {
+          window.location.href = data.redirectUrl;
+          return;
+        }
       }
     } catch (e) {
-      window.location.href = registerRedirectUrl;
+      console.error("Erreur API Paiement, redirection directe vers Saspay", e);
+    }
+
+    // Redirection directe selon l'offre et le lien Vercel associé
+    if (targetPlan === "pro" && saspayProUrl) {
+      window.location.href = saspayProUrl;
+    } else if (targetPlan === "enterprise" && saspayEnterpriseUrl) {
+      window.location.href = saspayEnterpriseUrl;
+    } else {
+      window.location.href = `/register?plan=${targetPlan}`;
     }
   };
 
@@ -249,4 +259,4 @@ export default function PricingPage() {
       <Footer />
     </div>
   );
-}
+    }
