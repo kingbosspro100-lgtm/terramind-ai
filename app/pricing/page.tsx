@@ -1,4 +1,4 @@
- "use client";
+"use client";
 
 import Link from "next/link";
 import { Check, Sparkles, ArrowRight, Building } from "lucide-react";
@@ -258,4 +258,4 @@ export default function PricingPage() {
       <Footer />
     </div>
   );
-          }
+    }
