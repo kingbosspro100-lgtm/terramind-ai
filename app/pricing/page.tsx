@@ -1,4 +1,4 @@
- "use client";
+"use client";
 
 import Link from "next/link";
 import { Check, Sparkles, ArrowRight, Building } from "lucide-react";
@@ -72,14 +72,18 @@ export default function PricingPage() {
     ];
 
   const handlePlanSubscribe = async (targetPlan: "free" | "pro" | "enterprise") => {
+    // 1. Offre Gratuite -> Redirection directe vers la création de compte classique
     if (targetPlan === "free") {
       window.location.href = "/register?plan=free";
       return;
     }
 
+    // 2. Préparation de l'URL de retour post-paiement vers /welcome-pro
+    const returnUrl = encodeURIComponent(`${window.location.origin}/welcome-pro`);
     const saspayProUrl = process.env.NEXT_PUBLIC_SASPAY_PAYMENT_URL;
     const saspayEnterpriseUrl = process.env.NEXT_PUBLIC_SASPAY_PAYMENT_URL_2;
 
+    // 3. Tentative de génération du lien via l'API backend Saspay
     try {
       const res = await fetch("/api/payments/saspay", {
         method: "POST",
@@ -95,24 +99,22 @@ export default function PricingPage() {
         }
       }
     } catch (e) {
-      console.error("Erreur API Paiement, redirection directe vers Saspay", e);
+      console.error("Erreur API Paiement Saspay, bascule sur les liens directs", e);
     }
 
-    // Fallback : Redirection directe avec injection de l'URL de retour dans le lien statique
-    const returnUrl = encodeURIComponent(`${window.location.origin}/welcome-pro`);
-
-    if (targetPlan === "pro" && saspayProUrl) {
-      const targetUrl = saspayProUrl.includes("?")
-        ? `${saspayProUrl}&redirect_url=${returnUrl}`
-        : `${saspayProUrl}?redirect_url=${returnUrl}`;
+    // 4. Fallback : Redirection forcée vers Saspay (sans retomber sur /register)
+    if (targetPlan === "pro") {
+      const baseUrl = saspayProUrl || "https://pay.saspay.com";
+      const targetUrl = baseUrl.includes("?")
+        ? `${baseUrl}&redirect_url=${returnUrl}`
+        : `${baseUrl}?redirect_url=${returnUrl}`;
       window.location.href = targetUrl;
-    } else if (targetPlan === "enterprise" && saspayEnterpriseUrl) {
-      const targetUrl = saspayEnterpriseUrl.includes("?")
-        ? `${saspayEnterpriseUrl}&redirect_url=${returnUrl}`
-        : `${saspayEnterpriseUrl}?redirect_url=${returnUrl}`;
+    } else if (targetPlan === "enterprise") {
+      const baseUrl = saspayEnterpriseUrl || "https://pay.saspay.com";
+      const targetUrl = baseUrl.includes("?")
+        ? `${baseUrl}&redirect_url=${returnUrl}`
+        : `${baseUrl}?redirect_url=${returnUrl}`;
       window.location.href = targetUrl;
-    } else {
-      window.location.href = `/register?plan=${targetPlan}`;
     }
   };
 
@@ -265,4 +267,5 @@ export default function PricingPage() {
       <Footer />
     </div>
   );
-}
+      }
+                   
