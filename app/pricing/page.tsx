@@ -72,53 +72,25 @@ export default function PricingPage() {
     ];
 
   const handlePlanSubscribe = async (targetPlan: "free" | "pro" | "enterprise") => {
-    // 1. Offre Gratuite -> Redirection directe vers la création de compte classique
     if (targetPlan === "free") {
       window.location.href = "/register?plan=free";
       return;
     }
 
-    // 2. Préparation de l'URL de retour post-paiement vers /welcome-pro
     const returnUrl = encodeURIComponent(`${window.location.origin}/welcome-pro`);
-    
-    // Liens de secours directs récupérés sur Saspay
-    const fallbackProUrl = "https://link.saspay.me/il0qjbz-ano";
-    const fallbackEnterpriseUrl = "https://link.saspay.me/vactjwnktn8";
 
-    const saspayProUrl = process.env.NEXT_PUBLIC_SASPAY_PAYMENT_URL || fallbackProUrl;
-    const saspayEnterpriseUrl = process.env.NEXT_PUBLIC_SASPAY_PAYMENT_URL_2 || fallbackEnterpriseUrl;
+    // Liens Saspay distincts et explicites
+    const PRO_LINK = "https://link.saspay.me/il0qjbz-ano";
+    const ENTERPRISE_LINK = "https://link.saspay.me/vactjwnktn8";
 
-    // 3. Tentative de génération du lien via l'API backend Saspay
-    try {
-      const res = await fetch("/api/payments/saspay", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan: targetPlan }),
-      });
+    // Choix direct selon le plan sélectionné
+    const selectedLink = targetPlan === "enterprise" ? ENTERPRISE_LINK : PRO_LINK;
 
-      if (res.ok) {
-        const data = await res.json();
-        if (data.redirectUrl) {
-          window.location.href = data.redirectUrl;
-          return;
-        }
-      }
-    } catch (e) {
-      console.error("Erreur API Paiement Saspay, bascule sur les liens directs", e);
-    }
+    const targetUrl = selectedLink.includes("?")
+      ? `${selectedLink}&redirect_url=${returnUrl}`
+      : `${selectedLink}?redirect_url=${returnUrl}`;
 
-    // 4. Fallback : Redirection forcée vers Saspay avec transmission de l'URL de retour
-    if (targetPlan === "pro") {
-      const targetUrl = saspayProUrl.includes("?")
-        ? `${saspayProUrl}&redirect_url=${returnUrl}`
-        : `${saspayProUrl}?redirect_url=${returnUrl}`;
-      window.location.href = targetUrl;
-    } else if (targetPlan === "enterprise") {
-      const targetUrl = saspayEnterpriseUrl.includes("?")
-        ? `${saspayEnterpriseUrl}&redirect_url=${returnUrl}`
-        : `${saspayEnterpriseUrl}?redirect_url=${returnUrl}`;
-      window.location.href = targetUrl;
-    }
+    window.location.href = targetUrl;
   };
 
   return (
