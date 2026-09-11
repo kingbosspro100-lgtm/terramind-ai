@@ -1,4 +1,4 @@
-"use client";
+ "use client";
 
 import Link from "next/link";
 import { Check, Sparkles, ArrowRight, Building } from "lucide-react";
@@ -77,7 +77,6 @@ export default function PricingPage() {
       return;
     }
 
-    // Récupération des deux liens de paiement Saspay configurés sur Vercel
     const saspayProUrl = process.env.NEXT_PUBLIC_SASPAY_PAYMENT_URL;
     const saspayEnterpriseUrl = process.env.NEXT_PUBLIC_SASPAY_PAYMENT_URL_2;
 
@@ -99,11 +98,19 @@ export default function PricingPage() {
       console.error("Erreur API Paiement, redirection directe vers Saspay", e);
     }
 
-    // Redirection directe selon l'offre et le lien Vercel associé
+    // Fallback : Redirection directe avec injection de l'URL de retour dans le lien statique
+    const returnUrl = encodeURIComponent(`${window.location.origin}/welcome-pro`);
+
     if (targetPlan === "pro" && saspayProUrl) {
-      window.location.href = saspayProUrl;
+      const targetUrl = saspayProUrl.includes("?")
+        ? `${saspayProUrl}&redirect_url=${returnUrl}`
+        : `${saspayProUrl}?redirect_url=${returnUrl}`;
+      window.location.href = targetUrl;
     } else if (targetPlan === "enterprise" && saspayEnterpriseUrl) {
-      window.location.href = saspayEnterpriseUrl;
+      const targetUrl = saspayEnterpriseUrl.includes("?")
+        ? `${saspayEnterpriseUrl}&redirect_url=${returnUrl}`
+        : `${saspayEnterpriseUrl}?redirect_url=${returnUrl}`;
+      window.location.href = targetUrl;
     } else {
       window.location.href = `/register?plan=${targetPlan}`;
     }
@@ -258,4 +265,4 @@ export default function PricingPage() {
       <Footer />
     </div>
   );
-    }
+}
