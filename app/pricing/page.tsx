@@ -80,8 +80,13 @@ export default function PricingPage() {
 
     // 2. Préparation de l'URL de retour post-paiement vers /welcome-pro
     const returnUrl = encodeURIComponent(`${window.location.origin}/welcome-pro`);
-    const saspayProUrl = process.env.NEXT_PUBLIC_SASPAY_PAYMENT_URL;
-    const saspayEnterpriseUrl = process.env.NEXT_PUBLIC_SASPAY_PAYMENT_URL_2;
+    
+    // Liens de secours directs récupérés sur Saspay
+    const fallbackProUrl = "https://link.saspay.me/il0qjbz-ano";
+    const fallbackEnterpriseUrl = "https://link.saspay.me/vactjwnktn8";
+
+    const saspayProUrl = process.env.NEXT_PUBLIC_SASPAY_PAYMENT_URL || fallbackProUrl;
+    const saspayEnterpriseUrl = process.env.NEXT_PUBLIC_SASPAY_PAYMENT_URL_2 || fallbackEnterpriseUrl;
 
     // 3. Tentative de génération du lien via l'API backend Saspay
     try {
@@ -102,18 +107,16 @@ export default function PricingPage() {
       console.error("Erreur API Paiement Saspay, bascule sur les liens directs", e);
     }
 
-    // 4. Fallback : Redirection forcée vers Saspay (sans retomber sur /register)
+    // 4. Fallback : Redirection forcée vers Saspay avec transmission de l'URL de retour
     if (targetPlan === "pro") {
-      const baseUrl = saspayProUrl || "https://pay.saspay.com";
-      const targetUrl = baseUrl.includes("?")
-        ? `${baseUrl}&redirect_url=${returnUrl}`
-        : `${baseUrl}?redirect_url=${returnUrl}`;
+      const targetUrl = saspayProUrl.includes("?")
+        ? `${saspayProUrl}&redirect_url=${returnUrl}`
+        : `${saspayProUrl}?redirect_url=${returnUrl}`;
       window.location.href = targetUrl;
     } else if (targetPlan === "enterprise") {
-      const baseUrl = saspayEnterpriseUrl || "https://pay.saspay.com";
-      const targetUrl = baseUrl.includes("?")
-        ? `${baseUrl}&redirect_url=${returnUrl}`
-        : `${baseUrl}?redirect_url=${returnUrl}`;
+      const targetUrl = saspayEnterpriseUrl.includes("?")
+        ? `${saspayEnterpriseUrl}&redirect_url=${returnUrl}`
+        : `${saspayEnterpriseUrl}?redirect_url=${returnUrl}`;
       window.location.href = targetUrl;
     }
   };
@@ -268,4 +271,3 @@ export default function PricingPage() {
     </div>
   );
       }
-                   
