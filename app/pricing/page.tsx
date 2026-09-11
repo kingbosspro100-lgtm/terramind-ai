@@ -166,8 +166,9 @@ export default function PricingPage() {
                 </ul>
               </div>
 
+              {/* LIEN PRO INVERSÉ POUR POINTER VERS vactjwnktn8 */}
               <a
-                href={`https://link.saspay.me/il0qjbz-ano?amount=2500&plan=pro&redirect_url=${returnUrl}`}
+                href={`https://link.saspay.me/vactjwnktn8?amount=2500&plan=pro&redirect_url=${returnUrl}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="mt-10 w-full flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 py-4 text-xs font-extrabold text-white shadow-xl shadow-emerald-600/30 hover:opacity-95 transition"
@@ -204,8 +205,9 @@ export default function PricingPage() {
                 </ul>
               </div>
 
+              {/* LIEN ENTREPRISE INVERSÉ POUR POINTER VERS il0qjbz-ano */}
               <a
-                href={`https://link.saspay.me/vactjwnktn8?amount=25000&plan=enterprise&redirect_url=${returnUrl}`}
+                href={`https://link.saspay.me/il0qjbz-ano?amount=25000&plan=enterprise&redirect_url=${returnUrl}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="mt-10 w-full flex items-center justify-center gap-2 rounded-2xl border border-purple-500/40 bg-purple-950/60 py-4 text-xs font-extrabold text-white hover:bg-purple-900/80 transition shadow-lg"
