@@ -95,10 +95,8 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
   const menu = [
     { name: t.navHome, href: "/home", icon: House },
     { name: t.navDashboard, href: "/dashboard", icon: LayoutDashboard },
-    { name: "Exploitations V1", href: "/dashboard/exploitations", icon: Tractor },
     { name: "TerraMind Store", href: "/dashboard/store", icon: Store },
     { name: "Prix des marchés", href: "/dashboard/markets", icon: ChartNoAxesCombined },
-    { name: "Météo V1", href: "/dashboard/weather", icon: CloudSun },
     { name: t.navFarms, href: "/farms", icon: Tractor },
     { name: t.navCrops, href: "/crops", icon: Sprout },
     { name: t.navFinance, href: "/finance", icon: Wallet },
