@@ -28,6 +28,23 @@ export async function getSubscription(): Promise<Subscription | null> {
     return null;
   }
 
+  const { data: v1Subscription } = await supabase
+    .from("abonnements")
+    .select("plan, status, trial_end, expires_at")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (v1Subscription) {
+    const isTrialValid = v1Subscription.status === "trialing" && (!v1Subscription.trial_end || new Date(v1Subscription.trial_end) > new Date());
+    const isActive = v1Subscription.status === "active" && (!v1Subscription.expires_at || new Date(v1Subscription.expires_at) > new Date());
+    const plan: Plan = v1Subscription.plan === "ENTREPRISE" ? "enterprise" : v1Subscription.plan === "PRO" ? "pro" : "free";
+    const isPaid = plan !== "free" && (isTrialValid || isActive);
+    return {
+      plan: isPaid ? plan : "free",
+      status: isPaid ? "active" : v1Subscription.status === "cancelled" ? "cancelled" : "expired",
+    };
+  }
+
   const metaPlan = user.user_metadata?.plan as Plan | undefined;
 
   // 1. Interroger la table subscriptions

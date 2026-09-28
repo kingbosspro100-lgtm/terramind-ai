@@ -170,8 +170,14 @@ alter table public.abonnements enable row level security;
 alter table public.ai_usage enable row level security;
 
 drop policy if exists "profiles_owner_all" on public.profiles;
-create policy "profiles_owner_all" on public.profiles for all
+drop policy if exists "profiles_select_owner" on public.profiles;
+drop policy if exists "profiles_update_owner" on public.profiles;
+create policy "profiles_select_owner" on public.profiles for select using (auth.uid() = id);
+create policy "profiles_update_owner" on public.profiles for update
   using (auth.uid() = id) with check (auth.uid() = id);
+revoke insert, update on public.profiles from authenticated;
+grant select on public.profiles to authenticated;
+grant update (full_name, phone, country) on public.profiles to authenticated;
 drop policy if exists "exploitations_owner_all" on public.exploitations;
 create policy "exploitations_owner_all" on public.exploitations for all
   using (auth.uid() = user_id) with check (auth.uid() = user_id);
@@ -204,8 +210,145 @@ create policy "store_products_seller_delete" on public.store_products for delete
 drop policy if exists "market_prices_public_read" on public.market_prices;
 create policy "market_prices_public_read" on public.market_prices for select using (true);
 drop policy if exists "abonnements_owner_all" on public.abonnements;
-create policy "abonnements_owner_all" on public.abonnements for all
-  using (auth.uid() = user_id) with check (auth.uid() = user_id);
+drop policy if exists "abonnements_select_owner" on public.abonnements;
+create policy "abonnements_select_owner" on public.abonnements for select using (auth.uid() = user_id);
 drop policy if exists "ai_usage_owner_all" on public.ai_usage;
-create policy "ai_usage_owner_all" on public.ai_usage for all
-  using (auth.uid() = user_id) with check (auth.uid() = user_id);
+drop policy if exists "Users can insert their own AI usage" on public.ai_usage;
+drop policy if exists "Users can update their own AI usage" on public.ai_usage;
+drop policy if exists "Users can insert their own ai_usage" on public.ai_usage;
+drop policy if exists "Users can update their own ai_usage" on public.ai_usage;
+drop policy if exists "ai_usage_insert_own" on public.ai_usage;
+drop policy if exists "ai_usage_update_own" on public.ai_usage;
+drop policy if exists "ai_usage_select_owner" on public.ai_usage;
+create policy "ai_usage_select_owner" on public.ai_usage for select using (auth.uid() = user_id);
+
+create or replace function public.start_free_trial_v1()
+returns public.abonnements
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_user_id uuid := auth.uid();
+  v_email text;
+  v_trial_used boolean;
+  v_existing public.abonnements%rowtype;
+  v_subscription public.abonnements%rowtype;
+  v_now timestamptz := now();
+begin
+  if v_user_id is null then
+    raise exception 'Authentification requise.' using errcode = '28000';
+  end if;
+
+  select email into v_email from auth.users where id = v_user_id;
+  insert into public.profiles (id, email)
+  values (v_user_id, coalesce(v_email, ''))
+  on conflict (id) do nothing;
+
+  select trial_used into v_trial_used
+  from public.profiles where id = v_user_id for update;
+  if v_trial_used then
+    raise exception 'L''essai gratuit a déjà été utilisé.' using errcode = 'P0001';
+  end if;
+
+  select * into v_existing
+  from public.abonnements where user_id = v_user_id for update;
+  if found and v_existing.plan <> 'FREE' then
+    raise exception 'Un abonnement payant existe déjà pour ce compte.' using errcode = 'P0001';
+  end if;
+
+  update public.profiles set trial_used = true, updated_at = v_now where id = v_user_id;
+  insert into public.abonnements (user_id, plan, status, trial_start, trial_end, expires_at, updated_at)
+  values (v_user_id, 'PRO', 'trialing', v_now, v_now + interval '7 days', v_now + interval '7 days', v_now)
+  on conflict (user_id) do update set
+    plan = excluded.plan,
+    status = excluded.status,
+    trial_start = excluded.trial_start,
+    trial_end = excluded.trial_end,
+    expires_at = excluded.expires_at,
+    updated_at = excluded.updated_at
+  returning * into v_subscription;
+  return v_subscription;
+end;
+$$;
+
+create or replace function public.consume_ai_message_v1()
+returns public.ai_usage
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_user_id uuid := auth.uid();
+  v_month_start date := date_trunc('month', now() at time zone 'utc')::date;
+  v_plan text := 'FREE';
+  v_quota integer := 5;
+  v_usage public.ai_usage%rowtype;
+begin
+  if v_user_id is null then
+    raise exception 'Authentification requise.' using errcode = '28000';
+  end if;
+
+  select plan into v_plan from public.abonnements
+  where user_id = v_user_id
+    and status in ('active', 'trialing')
+    and (expires_at is null or expires_at > now())
+    and (status <> 'trialing' or trial_end > now());
+
+  v_quota := case v_plan
+    when 'PRO' then 50
+    when 'ENTREPRISE' then 500
+    else 5
+  end;
+
+  insert into public.ai_usage (user_id, month_start)
+  values (v_user_id, v_month_start)
+  on conflict (user_id, month_start) do nothing;
+
+  select * into v_usage from public.ai_usage
+  where user_id = v_user_id and month_start = v_month_start for update;
+
+  if v_usage.message_count < v_quota then
+    update public.ai_usage set message_count = message_count + 1, updated_at = now()
+    where user_id = v_user_id and month_start = v_month_start returning * into v_usage;
+  elsif v_usage.rewarded_bonus_messages > 0 then
+    update public.ai_usage set rewarded_bonus_messages = rewarded_bonus_messages - 1, updated_at = now()
+    where user_id = v_user_id and month_start = v_month_start returning * into v_usage;
+  else
+    raise exception 'Quota mensuel de messages IA épuisé.' using errcode = 'P0001';
+  end if;
+
+  return v_usage;
+end;
+$$;
+
+create or replace function public.credit_ai_bonus_message_v1(p_user_id uuid, p_amount integer default 1)
+returns public.ai_usage
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_month_start date := date_trunc('month', now() at time zone 'utc')::date;
+  v_usage public.ai_usage%rowtype;
+begin
+  if p_user_id is null or p_amount < 1 or p_amount > 100 then
+    raise exception 'Crédit bonus invalide.' using errcode = '22023';
+  end if;
+
+  insert into public.ai_usage (user_id, month_start, rewarded_bonus_messages)
+  values (p_user_id, v_month_start, p_amount)
+  on conflict (user_id, month_start) do update set
+    rewarded_bonus_messages = public.ai_usage.rewarded_bonus_messages + excluded.rewarded_bonus_messages,
+    updated_at = now()
+  returning * into v_usage;
+  return v_usage;
+end;
+$$;
+
+revoke all on function public.start_free_trial_v1() from public, anon;
+grant execute on function public.start_free_trial_v1() to authenticated;
+revoke all on function public.consume_ai_message_v1() from public, anon;
+grant execute on function public.consume_ai_message_v1() to authenticated;
+revoke all on function public.credit_ai_bonus_message_v1(uuid, integer) from public, anon, authenticated;
+grant execute on function public.credit_ai_bonus_message_v1(uuid, integer) to service_role;

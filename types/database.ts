@@ -100,6 +100,8 @@ export interface AiUsage {
   month_start: string;
   message_count: number;
   rewarded_bonus_messages: number;
+  rewarded_messages?: number | null;
+  rewarded_claimed?: number | null;
   created_at: string;
   updated_at: string;
 }

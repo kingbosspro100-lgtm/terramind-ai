@@ -12,10 +12,24 @@ const capitals: Record<SupportedCountry, { city: string; latitude: number; longi
   "Cameroun": { city: "Yaoundé", latitude: 3.87, longitude: 11.52 },
   "Sénégal": { city: "Dakar", latitude: 14.69, longitude: -17.45 },
 };
+const countryCodes: Record<SupportedCountry, string> = { "Bénin": "BJ", "Côte d'Ivoire": "CI", "Cameroun": "CM", "Sénégal": "SN" };
+
+interface GeocodingResult {
+  id: number;
+  name: string;
+  latitude: number;
+  longitude: number;
+  country: string;
+  country_code: string;
+  admin1?: string;
+}
 
 export default function DashboardWeatherPage() {
   const [country, setCountry] = useState<SupportedCountry>("Bénin");
   const [city, setCity] = useState(capitals.Bénin.city);
+  const [cityQuery, setCityQuery] = useState(capitals.Bénin.city);
+  const [cityResults, setCityResults] = useState<GeocodingResult[]>([]);
+  const [searchingCity, setSearchingCity] = useState(false);
   const [coords, setCoords] = useState({ latitude: capitals.Bénin.latitude, longitude: capitals.Bénin.longitude });
   const [weather, setWeather] = useState<LiveWeatherData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -43,6 +57,8 @@ export default function DashboardWeatherPage() {
   function changeCountry(value: SupportedCountry) {
     setCountry(value);
     setCity(capitals[value].city);
+    setCityQuery(capitals[value].city);
+    setCityResults([]);
     setWeather(null);
     setLoading(true);
     setCoords({ latitude: capitals[value].latitude, longitude: capitals[value].longitude });
@@ -55,7 +71,39 @@ export default function DashboardWeatherPage() {
       setLoading(true);
       setCoords({ latitude: position.latitude, longitude: position.longitude });
       setCity("Ma position");
+      setCityQuery("Ma position");
+      setCityResults([]);
     }, () => setError("Position inaccessible. Vérifiez l'autorisation du navigateur."));
+  }
+
+  async function searchCity() {
+    const query = cityQuery.trim();
+    if (query.length < 2) { setError("Saisissez au moins deux caractères pour rechercher une ville."); return; }
+    setSearchingCity(true);
+    setError("");
+    try {
+      const params = new URLSearchParams({ name: query, count: "8", language: "fr", format: "json", countryCode: countryCodes[country] });
+      const response = await fetch(`https://geocoding-api.open-meteo.com/v1/search?${params}`);
+      if (!response.ok) throw new Error("Le service de géocodage est indisponible.");
+      const payload: { results?: GeocodingResult[] } = await response.json();
+      const results = (payload.results ?? []).filter((result) => result.country_code === countryCodes[country]);
+      setCityResults(results);
+      if (results.length === 0) setError(`Aucune ville trouvée au ${country}.`);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Recherche de ville impossible.");
+      setCityResults([]);
+    } finally {
+      setSearchingCity(false);
+    }
+  }
+
+  function chooseCity(result: GeocodingResult) {
+    setCity(result.name);
+    setCityQuery(result.name);
+    setCityResults([]);
+    setWeather(null);
+    setLoading(true);
+    setCoords({ latitude: result.latitude, longitude: result.longitude });
   }
 
   return (
@@ -67,9 +115,12 @@ export default function DashboardWeatherPage() {
 
       <section className="flex flex-wrap items-end gap-3">
         <label className="min-w-48 flex-1 space-y-1.5 text-sm text-slate-300">Pays<select value={country} onChange={(event) => changeCountry(event.target.value as SupportedCountry)} className="w-full rounded-lg border border-slate-700 bg-[#100E18] px-3 py-2.5 text-white">{SUPPORTED_COUNTRIES.map((name) => <option key={name}>{name}</option>)}</select></label>
-        <label className="min-w-48 flex-1 space-y-1.5 text-sm text-slate-300">Ville de référence<input value={city} onChange={(event) => setCity(event.target.value)} onBlur={() => { if (!city.trim()) setCity(capitals[country].city); }} className="w-full rounded-lg border border-slate-700 bg-[#100E18] px-3 py-2.5 text-white" /></label>
+        <label className="min-w-48 flex-1 space-y-1.5 text-sm text-slate-300">Rechercher une ville<input value={cityQuery} onChange={(event) => setCityQuery(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void searchCity(); } }} className="w-full rounded-lg border border-slate-700 bg-[#100E18] px-3 py-2.5 text-white" /></label>
+        <button onClick={() => void searchCity()} disabled={searchingCity} className="min-h-10 rounded-lg bg-emerald-700 px-3 text-sm font-medium text-white hover:bg-emerald-600 disabled:opacity-50">{searchingCity ? "Recherche…" : "Chercher"}</button>
         <button onClick={locate} className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-slate-700 px-3 text-sm text-slate-200 hover:bg-slate-800"><LocateFixed size={16} />Ma position</button>
       </section>
+
+      {cityResults.length > 0 && <section aria-label="Résultats de villes" className="divide-y divide-slate-800 rounded-lg border border-slate-800 bg-[#100E18]">{cityResults.map((result) => <button key={result.id} onClick={() => chooseCity(result)} className="block w-full px-4 py-3 text-left text-sm text-slate-200 hover:bg-emerald-950/40">{result.name}{result.admin1 ? `, ${result.admin1}` : ""} · {result.country}</button>)}</section>}
 
       {error && <p role="alert" className="rounded-lg border border-red-800 bg-red-950/40 px-4 py-3 text-sm text-red-200">{error}</p>}
       <section className="grid gap-5 lg:grid-cols-[1fr_1.2fr]">

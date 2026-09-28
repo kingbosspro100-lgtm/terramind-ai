@@ -7,6 +7,7 @@ import {
   Plan,
 } from "@/lib/subscription";
 import { AI_QUOTA_CONFIG } from "@/lib/ai-quota-config";
+import { createAdminClient } from "@/lib/supabase-admin";
 import * as crypto from "crypto";
 
 export interface AiQuotaStatus {
@@ -106,7 +107,7 @@ export async function getAiQuota(userId: string, targetDate: Date = new Date()):
     // 1. Lire les messages utilisés et le solde de bonus dans ai_usage
     let { data: usageData, error: usageError } = await supabase
       .from("ai_usage")
-      .select("message_count, rewarded_messages, rewarded_claimed")
+      .select("message_count, rewarded_bonus_messages, rewarded_claimed")
       .eq("user_id", dbUserId)
       .eq("month_start", monthStart)
       .maybeSingle();
@@ -121,17 +122,20 @@ export async function getAiQuota(userId: string, targetDate: Date = new Date()):
       usageData = fallback.data as any;
     }
 
-    if (usageData) {
-      if (usageData.message_count !== undefined && usageData.message_count !== null) {
-        messagesUsed = Number(usageData.message_count) || 0;
+    const usageDataCompat = usageData as any;
+
+    if (usageDataCompat) {
+      if (usageDataCompat.message_count !== undefined && usageDataCompat.message_count !== null) {
+        messagesUsed = Number(usageDataCompat.message_count) || 0;
         fallbackMessagesUsedMap.set(monthKey, messagesUsed);
       }
-      if (usageData.rewarded_messages !== undefined && usageData.rewarded_messages !== null) {
-        rewardedMessages = Number(usageData.rewarded_messages) || 0;
+      const bonusBalance = usageDataCompat.rewarded_bonus_messages ?? usageDataCompat.rewarded_messages;
+      if (bonusBalance !== undefined && bonusBalance !== null) {
+        rewardedMessages = Number(bonusBalance) || 0;
         fallbackRewardedMessagesMap.set(monthKey, rewardedMessages);
       }
-      if (!fallbackWeeklyAdsMap.has(weekKey) && (usageData as any).rewarded_claimed !== undefined && (usageData as any).rewarded_claimed !== null) {
-        adsWatched = Number((usageData as any).rewarded_claimed) || 0;
+      if (!fallbackWeeklyAdsMap.has(weekKey) && usageDataCompat.rewarded_claimed !== undefined && usageDataCompat.rewarded_claimed !== null) {
+        adsWatched = Number(usageDataCompat.rewarded_claimed) || 0;
       }
     }
 
@@ -190,6 +194,15 @@ export async function incrementAiUsage(userId: string): Promise<AiQuotaStatus> {
   const monthKey = `${dbUserId}_${monthStart}`;
 
   const currentQuota = await getAiQuota(userId);
+  const supabase = await createClient();
+  const { data: { user: authenticatedUser } } = await supabase.auth.getUser();
+
+  if (authenticatedUser?.id === dbUserId) {
+    const { error } = await supabase.rpc("consume_ai_message_v1");
+    if (error) throw error;
+    return getAiQuota(userId);
+  }
+
   let currentCount = currentQuota.messagesUsed;
   let rewardedMessages = currentQuota.rewardedMessages;
 
@@ -207,7 +220,6 @@ export async function incrementAiUsage(userId: string): Promise<AiQuotaStatus> {
   fallbackRewardedMessagesMap.set(monthKey, rewardedMessages);
 
   try {
-    const supabase = await createClient();
     const nowIso = new Date().toISOString();
 
     // Sauvegarder dans ai_usage (sans toucher à ads_watched / ai_weekly_ads)
@@ -260,15 +272,19 @@ export async function claimAdReward(userId: string): Promise<{
   const weekKey = `${dbUserId}_${weekStart}`;
   const monthKey = `${dbUserId}_${monthStart}`;
 
-  // 1. Enregistrer immédiatement dans les maps de repli en mémoire
-  fallbackWeeklyAdsMap.set(weekKey, newAdsWatched);
-  fallbackRewardedMessagesMap.set(monthKey, newRewardBalance);
-
+  let isSupabaseUser = false;
   try {
     const supabase = await createClient();
+    const { data: { user: authenticatedUser } } = await supabase.auth.getUser();
+    isSupabaseUser = authenticatedUser?.id === dbUserId;
 
-    // 2. Tenter d'incrémenter les pubs regardées pour la SEMAINE dans ai_weekly_ads
-    try {
+    if (isSupabaseUser) {
+      const admin = createAdminClient();
+      const { error: creditError } = await admin.rpc("credit_ai_bonus_message_v1", {
+        p_user_id: dbUserId,
+        p_amount: AI_QUOTA_CONFIG.REWARDED_MESSAGE_AMOUNT,
+      });
+      if (creditError) throw creditError;
       await supabase
         .from("ai_weekly_ads")
         .upsert(
@@ -280,27 +296,11 @@ export async function claimAdReward(userId: string): Promise<{
           },
           { onConflict: "user_id,week_start" }
         );
-    } catch (e) {
-      // Ignorer si la table n'existe pas encore
-    }
-
-    // 3. Tenter d'enregistrer dans ai_usage avec rewarded_claimed
-    const { error: err1 } = await supabase
-      .from("ai_usage")
-      .upsert(
-        {
-          user_id: dbUserId,
-          month_start: monthStart,
-          message_count: currentQuota.messagesUsed,
-          rewarded_messages: newRewardBalance,
-          rewarded_claimed: newAdsWatched,
-          updated_at: nowIso,
-        },
-        { onConflict: "user_id,month_start" }
+    } else {
+      await supabase.from("ai_weekly_ads").upsert(
+        { user_id: dbUserId, week_start: weekStart, ads_watched: newAdsWatched, updated_at: nowIso },
+        { onConflict: "user_id,week_start" }
       );
-
-    // 4. Si err1 (ex: colonne rewarded_claimed manquante), repli sans la colonne rewarded_claimed
-    if (err1) {
       await supabase
         .from("ai_usage")
         .upsert(
@@ -309,6 +309,8 @@ export async function claimAdReward(userId: string): Promise<{
             month_start: monthStart,
             message_count: currentQuota.messagesUsed,
             rewarded_messages: newRewardBalance,
+            rewarded_bonus_messages: newRewardBalance,
+            rewarded_claimed: newAdsWatched,
             updated_at: nowIso,
           },
           { onConflict: "user_id,month_start" }
@@ -316,7 +318,17 @@ export async function claimAdReward(userId: string): Promise<{
     }
   } catch (err) {
     console.error("Erreur enregistrement publicité récompensée:", err);
+    if (isSupabaseUser) {
+      return {
+        success: false,
+        message: "Le crédit bonus n'a pas pu être enregistré. Vérifiez la configuration serveur et réessayez.",
+        quota: currentQuota,
+      };
+    }
   }
+
+  fallbackWeeklyAdsMap.set(weekKey, newAdsWatched);
+  fallbackRewardedMessagesMap.set(monthKey, newRewardBalance);
 
   const updatedQuota = await getAiQuota(userId);
 
