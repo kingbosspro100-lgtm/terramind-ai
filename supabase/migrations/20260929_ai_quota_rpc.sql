@@ -103,5 +103,5 @@ begin
 end;
 $$;
 
-revoke all on function public.consume_ai_message_v1() from public, anon;
-grant execute on function public.consume_ai_message_v1() to authenticated;
+revoke all on function public.consume_ai_message_v1 from public, anon;
+grant execute on function public.consume_ai_message_v1 to authenticated;
