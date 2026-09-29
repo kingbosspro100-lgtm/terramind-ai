@@ -119,7 +119,7 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
 
   return (
     <>
-      <aside className={`fixed left-0 top-0 flex h-screen w-72 flex-col border-r border-emerald-900/20 bg-[#0E0C1F] text-white z-50 transition-transform duration-300 lg:translate-x-0 ${isOpen ? "translate-x-0" : "-translate-x-full"}`}>
+      <aside className={`fixed left-0 top-0 z-50 flex h-dvh w-72 flex-col overflow-hidden border-r border-emerald-900/20 bg-[#0E0C1F] text-white transition-transform duration-300 lg:translate-x-0 ${isOpen ? "translate-x-0" : "-translate-x-full"}`}>
 
         {/* Top Logo */}
         <div className="flex items-center justify-between px-6 py-6 border-b border-emerald-900/20">
@@ -140,7 +140,7 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
         </div>
 
         {/* Navigation */}
-        <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6">
+        <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-4 py-6">
           <div>
             <p className="mb-3 px-3 text-[10px] font-extrabold uppercase tracking-[0.2em] text-emerald-300">
               Navigation
@@ -201,7 +201,7 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
         </div>
 
         {/* User Profile Footer */}
-        <div className="border-t border-emerald-900/20 p-4 bg-[#0A100C]">
+        <div className="shrink-0 border-t border-emerald-900/20 bg-[#0A100C] p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="relative">
