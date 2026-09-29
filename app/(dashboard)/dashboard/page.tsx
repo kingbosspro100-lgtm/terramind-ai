@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { CloudSun, ChartNoAxesCombined, Store } from "lucide-react";
 import KpiGrid from "@/app/components/dashboard/KpiGrid";
 import ChartsSection from "@/app/components/dashboard/ChartsSection";
 import AnalyticGauge from "@/app/components/dashboard/AnalyticGauge";
@@ -32,6 +34,29 @@ export default async function DashboardPage() {
             transactions={stats?.transactionsData ?? []}
           />
         </div>
+      </section>
+
+      <section className="grid gap-4 md:grid-cols-3">
+        {[
+          { title: "Météo", href: "/dashboard/weather", description: "Conditions et alertes", icon: CloudSun, tint: "from-sky-500/20 to-emerald-500/10" },
+          { title: "Prix des marchés", href: "/dashboard/markets", description: "Relevés par pays", icon: ChartNoAxesCombined, tint: "from-amber-500/20 to-orange-500/10" },
+          { title: "TerraMind Store", href: "/dashboard/store", description: "Produits et ventes", icon: Store, tint: "from-emerald-500/20 to-teal-500/10" },
+        ].map(({ title, href, description, icon: Icon, tint }) => (
+          <Link
+            key={title}
+            href={href}
+            className={`group rounded-2xl border border-emerald-900/25 bg-gradient-to-br ${tint} p-4 text-white shadow-lg shadow-slate-950/20 transition hover:-translate-y-0.5 hover:border-emerald-500/40`}
+          >
+            <div className="flex items-center justify-between">
+              <div className="rounded-xl bg-slate-900/60 p-2.5 text-emerald-300">
+                <Icon className="h-5 w-5" />
+              </div>
+              <span className="text-[10px] uppercase tracking-[0.2em] text-emerald-200/80">Accès</span>
+            </div>
+            <h3 className="mt-4 text-lg font-bold text-white">{title}</h3>
+            <p className="mt-1 text-sm text-slate-300">{description}</p>
+          </Link>
+        ))}
       </section>
 
       {/* Row 3: Weather & AI */}
