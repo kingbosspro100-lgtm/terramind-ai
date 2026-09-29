@@ -135,8 +135,8 @@ export async function generateAIResponse(
   // Modèles valides Gemini ordonnés par préférence et repli automatique (fallback)
   const candidateModels = [...new Set([
     process.env.GEMINI_MODEL,
-    "gemini-2.5-flash",
-    "gemini-2.0-flash",
+    "gemini-3.8-flash",
+    "gemini-flash-latest",
   ].filter((model): model is string => Boolean(model)))];
 
   let lastError: any = null;

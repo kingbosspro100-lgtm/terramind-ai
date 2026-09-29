@@ -162,7 +162,19 @@ export async function POST(request: Request) {
     }
 
     // 8. Incrémentation/Consommation du quota mensuel UNIQUEMENT après succès de la réponse IA
-    const updatedQuota = await incrementAiUsage(user.id);
+    let updatedQuota;
+    try {
+      updatedQuota = await incrementAiUsage(user.id);
+    } catch (quotaError) {
+      console.error("Impossible d'enregistrer la consommation du quota IA:", quotaError);
+      return NextResponse.json(
+        {
+          error: "AI_QUOTA_UNAVAILABLE",
+          message: "Gemini a répondu, mais le quota IA n’a pas pu être enregistré. Appliquez la migration Supabase 20260929_ai_quota_rpc.sql puis réessayez.",
+        },
+        { status: 503 }
+      );
+    }
 
     // 9. Retour de la réponse au client
     return NextResponse.json({
