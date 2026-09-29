@@ -95,13 +95,13 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
   const menu = [
     { name: t.navHome, href: "/home", icon: House },
     { name: t.navDashboard, href: "/dashboard", icon: LayoutDashboard },
-    { name: t.navWeather, href: "/weather", icon: CloudSun },
-    { name: "Prix des marchés", href: "/dashboard/markets", icon: ChartNoAxesCombined },
-    { name: "TerraMind Store", href: "/dashboard/store", icon: Store },
     { name: t.navFarms, href: "/farms", icon: Tractor },
     { name: t.navCrops, href: "/crops", icon: Sprout },
-    { name: t.navFinance, href: "/finance", icon: Wallet },
+    { name: t.navWeather, href: "/weather", icon: CloudSun },
     { name: t.navStock, href: "/stock", icon: Package },
+    { name: t.navFinance, href: "/finance", icon: Wallet },
+    { name: "Prix des marchés", href: "/dashboard/markets", icon: ChartNoAxesCombined },
+    { name: "TerraMind Store", href: "/dashboard/store", icon: Store },
     { name: t.navAI, href: "/ai", icon: Bot },
     { name: t.navSettings, href: "/settings", icon: Settings },
   ];
