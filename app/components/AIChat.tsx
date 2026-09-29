@@ -51,7 +51,9 @@ export default function AIChat() {
 
   // Chat sessions state
   const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const sessionsRef = useRef<ChatSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string>("");
+  const [isMobileHistoryOpen, setIsMobileHistoryOpen] = useState(false);
   const [input, setInput] = useState("");
   const [pending, setPending] = useState(false);
   const [quota, setQuota] = useState<any>(null);
@@ -116,6 +118,7 @@ export default function AIChat() {
       try {
         const parsed: ChatSession[] = JSON.parse(saved);
         if (parsed.length > 0) {
+          sessionsRef.current = parsed;
           setSessions(parsed);
           setActiveSessionId(parsed[0].id);
           return;
@@ -132,12 +135,14 @@ export default function AIChat() {
       createdAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       messages: [{ role: "assistant", content: welcomeMsg }],
     };
+    sessionsRef.current = [initialSession];
     setSessions([initialSession]);
     setActiveSessionId(initialSession.id);
   }, []);
 
   // Save sessions to localStorage
   const saveSessions = (updated: ChatSession[]) => {
+    sessionsRef.current = updated;
     setSessions(updated);
     localStorage.setItem("terramind_ai_chats", JSON.stringify(updated));
   };
@@ -210,6 +215,7 @@ export default function AIChat() {
     const updated = [newChat, ...sessions];
     saveSessions(updated);
     setActiveSessionId(newChat.id);
+    setIsMobileHistoryOpen(false);
   };
 
   // Delete conversation
@@ -237,6 +243,7 @@ export default function AIChat() {
   // Send message
   async function send(event: FormEvent) {
     event.preventDefault();
+    const targetSessionId = activeSessionId;
     const content = input.trim();
     if ((!content && !selectedFile) || pending) return;
 
@@ -255,18 +262,15 @@ export default function AIChat() {
     };
 
     // Update active chat title if default
-    let updatedSessions = [...sessions];
-    const targetIdx = updatedSessions.findIndex((s) => s.id === activeSessionId);
     let sessionHistory: Message[] = [];
-
-    if (targetIdx !== -1) {
-      const s = updatedSessions[targetIdx];
-      if (s.title.startsWith("Nouvelle conversation") || s.title.startsWith("Conversation")) {
-        s.title = content.slice(0, 25) || selectedFile?.name || "Analyse image";
-      }
-      s.messages = [...s.messages, userMessage];
-      sessionHistory = s.messages;
-    }
+    const updatedSessions = sessions.map((session) => {
+      if (session.id !== targetSessionId) return session;
+      const title = session.title.startsWith("Nouvelle conversation") || session.title.startsWith("Conversation")
+        ? content.slice(0, 25) || selectedFile?.name || "Analyse image"
+        : session.title;
+      sessionHistory = [...session.messages, userMessage];
+      return { ...session, title, messages: sessionHistory };
+    });
     saveSessions(updatedSessions);
 
     const filePayload = selectedFile;
@@ -307,7 +311,11 @@ export default function AIChat() {
       } else if (response.status === 429 || data.error === "QUOTA_EXCEEDED") {
         setErrorMsg(data.message || "Votre quota mensuel de messages IA est épuisé.");
         assistantContent = `⚠️ ${data.message || "Quota mensuel atteint."} Passez à la formule PRO ou Entreprise pour continuer.`;
+      } else if (data.error === "AI_NOT_CONFIGURED") {
+        setErrorMsg(data.message);
+        assistantContent = `⚠️ ${data.message}`;
       } else if (!response.ok) {
+        setErrorMsg(data.message || "Le service IA est momentanément indisponible.");
         assistantContent = `⚠️ ${data.message || "Le service IA est momentanément indisponible. Réessayez dans un instant."}`;
       } else {
         const bonusNotice = wasBonusUsed ? "\n\n🎁 *(1 message bonus utilisé pour cette réponse)*" : "";
@@ -315,20 +323,22 @@ export default function AIChat() {
       }
 
       const assistantMsg: Message = { role: "assistant", content: assistantContent };
-      const nextSessions = sessions.map((s) => {
-        if (s.id === activeSessionId) {
+      const nextSessions = sessionsRef.current.map((s) => {
+        if (s.id === targetSessionId) {
           return { ...s, messages: [...s.messages, assistantMsg] };
         }
         return s;
       });
       saveSessions(nextSessions);
     } catch (err) {
+      const message = "Impossible de joindre l’assistant IA. Vérifiez votre connexion et la configuration du service.";
+      setErrorMsg(message);
       const errMsg: Message = {
         role: "assistant",
-        content: "Le service IA est momentanément indisponible. Réessayez dans un instant.",
+        content: message,
       };
-      const nextSessions = sessions.map((s) => {
-        if (s.id === activeSessionId) {
+      const nextSessions = sessionsRef.current.map((s) => {
+        if (s.id === targetSessionId) {
           return { ...s, messages: [...s.messages, errMsg] };
         }
         return s;
@@ -494,14 +504,75 @@ export default function AIChat() {
           <p className="min-w-0 truncate text-xs font-medium text-emerald-200/80">
             {currentSession?.title || "Nouvelle conversation"}
           </p>
-          <button
-            type="button"
-            onClick={createNewChat}
-            className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-emerald-700/50 bg-emerald-950/50 px-3 py-2 text-xs font-semibold text-emerald-100"
-          >
-            <Plus className="h-4 w-4" /> Nouvelle
-          </button>
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsMobileHistoryOpen(true)}
+              className="inline-flex items-center gap-2 rounded-xl border border-emerald-700/50 bg-emerald-950/50 px-3 py-2 text-xs font-semibold text-emerald-100"
+            >
+              <History className="h-4 w-4" /> Toutes ({sessions.length})
+            </button>
+            <button
+              type="button"
+              onClick={createNewChat}
+              className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-emerald-700/50 bg-emerald-950/50 px-3 py-2 text-xs font-semibold text-emerald-100"
+            >
+              <Plus className="h-4 w-4" /> Nouvelle
+            </button>
+          </div>
         </div>
+
+        {isMobileHistoryOpen && (
+          <div
+            className="fixed inset-0 z-[60] bg-black/75 p-4 lg:hidden"
+            onClick={() => setIsMobileHistoryOpen(false)}
+          >
+            <section
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="mobile-chat-history-title"
+              className="mx-auto mt-[8dvh] max-h-[84dvh] max-w-lg overflow-y-auto rounded-2xl border border-emerald-800/50 bg-[#0E0C1F] p-4 shadow-2xl"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="mb-4 flex items-center justify-between">
+                <h2 id="mobile-chat-history-title" className="font-bold text-white">Toutes les conversations ({sessions.length})</h2>
+                <button
+                  type="button"
+                  onClick={() => setIsMobileHistoryOpen(false)}
+                  aria-label="Fermer les conversations"
+                  className="rounded-lg p-2 text-slate-300 hover:bg-white/10 hover:text-white"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <div className="space-y-2">
+                {sessions.map((session) => (
+                  <div key={session.id} className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveSessionId(session.id);
+                        setIsMobileHistoryOpen(false);
+                      }}
+                      className="flex min-w-0 flex-1 items-center gap-3 p-2 text-left text-sm text-slate-100"
+                    >
+                      <MessageSquare className="h-4 w-4 shrink-0 text-emerald-300" />
+                      <span className="truncate">{session.title}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(event) => deleteChat(session.id, event)}
+                      aria-label={`Supprimer ${session.title}`}
+                      className="rounded-lg p-2 text-slate-400 hover:bg-red-950/50 hover:text-red-300"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </section>
+          </div>
+        )}
 
         {/* Main Chat Box */}
         <section className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-emerald-900/30 bg-gradient-to-b from-[#181436] to-[#050A07] shadow-2xl lg:rounded-3xl">

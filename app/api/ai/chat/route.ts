@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth-helper";
 import { getAiQuota, incrementAiUsage } from "@/lib/ai-quota";
 import { getUserAgronomicContext } from "@/lib/user-context";
-import { generateAIResponse, ChatMessage } from "@/services/ai";
+import { generateAIResponse, isAiProviderConfigured, ChatMessage } from "@/services/ai";
 
 // Dictionnaire simple pour le contrôle anti-spam des requêtes simultanées par utilisateur
 const activeRequests = new Set<string>();
@@ -18,6 +18,16 @@ export async function POST(request: Request) {
         message: "Authentification requise pour utiliser l'Assistant IA TerraMind.",
       },
       { status: 401 }
+    );
+  }
+
+  if (!isAiProviderConfigured()) {
+    return NextResponse.json(
+      {
+        error: "AI_NOT_CONFIGURED",
+        message: "L’assistant IA n’est pas configuré. L’administrateur doit ajouter GEMINI_API_KEY dans les variables d’environnement serveur.",
+      },
+      { status: 503 }
     );
   }
 

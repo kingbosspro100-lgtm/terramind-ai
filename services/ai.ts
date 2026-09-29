@@ -57,6 +57,11 @@ RÈGLES IMPORTANTES :
 Ton objectif est de fournir une réponse réellement utile, spécifique et adaptée au message de l'utilisateur.
 `;
 
+export function isAiProviderConfigured(): boolean {
+  const apiKey = process.env.GEMINI_API_KEY || process.env.AI_API_KEY;
+  return Boolean(apiKey && apiKey !== "your_gemini_api_key_here");
+}
+
 export async function generateAIResponse(
   messages: ChatMessage[],
   systemPromptOverride?: string,
