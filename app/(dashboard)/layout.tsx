@@ -10,15 +10,19 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const updateSidebarOpen = (isOpen: boolean) => {
+    setIsSidebarOpen(isOpen);
+    window.dispatchEvent(new CustomEvent("dashboard-sidebar-visibility", { detail: isOpen }));
+  };
 
   return (
     <div className="flex min-h-screen bg-[#0B0914] text-slate-100 selection:bg-emerald-600 selection:text-white">
 
-      <Sidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
+      <Sidebar isOpen={isSidebarOpen} setIsOpen={updateSidebarOpen} />
 
       <div className="flex flex-1 flex-col min-w-0 lg:ml-72 transition-all duration-300">
 
-        <Header toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
+        <Header toggleSidebar={() => updateSidebarOpen(!isSidebarOpen)} />
 
         <main className="flex-1 p-4 md:p-6 lg:p-8 space-y-8">
           {children}
@@ -30,7 +34,7 @@ export default function DashboardLayout({
       {isSidebarOpen && (
         <div 
           className="fixed inset-0 bg-black/60 z-40 lg:hidden backdrop-blur-sm"
-          onClick={() => setIsSidebarOpen(false)}
+          onClick={() => updateSidebarOpen(false)}
         />
       )}
 

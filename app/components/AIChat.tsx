@@ -54,6 +54,7 @@ export default function AIChat() {
   const sessionsRef = useRef<ChatSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string>("");
   const [isMobileHistoryOpen, setIsMobileHistoryOpen] = useState(false);
+  const [isNavigationMenuOpen, setIsNavigationMenuOpen] = useState(false);
   const [input, setInput] = useState("");
   const [pending, setPending] = useState(false);
   const [quota, setQuota] = useState<any>(null);
@@ -138,6 +139,14 @@ export default function AIChat() {
     sessionsRef.current = [initialSession];
     setSessions([initialSession]);
     setActiveSessionId(initialSession.id);
+  }, []);
+
+  useEffect(() => {
+    const handleSidebarVisibility = (event: Event) => {
+      setIsNavigationMenuOpen((event as CustomEvent<boolean>).detail);
+    };
+    window.addEventListener("dashboard-sidebar-visibility", handleSidebarVisibility);
+    return () => window.removeEventListener("dashboard-sidebar-visibility", handleSidebarVisibility);
   }, []);
 
   // Save sessions to localStorage
@@ -725,7 +734,7 @@ export default function AIChat() {
           )}
 
           {/* Input Form with Audio Dictation & Image/File Attachment */}
-          <form onSubmit={send} className="fixed inset-x-3 bottom-3 z-50 shrink-0 rounded-2xl border border-emerald-400/60 bg-[#0B0914] p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-[0_12px_48px_rgba(0,0,0,0.8)] sm:inset-x-5 sm:bottom-4 sm:p-3 lg:sticky lg:inset-auto lg:bottom-0 lg:z-10 lg:rounded-none lg:border-x-0 lg:border-b-0 lg:border-t lg:border-emerald-900/30 lg:bg-[#0B0914]/95 lg:shadow-none lg:backdrop-blur-md">
+          {!isNavigationMenuOpen && <form onSubmit={send} className="fixed inset-x-3 bottom-3 z-50 shrink-0 rounded-2xl border border-emerald-400/60 bg-[#0B0914] p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-[0_12px_48px_rgba(0,0,0,0.8)] sm:inset-x-5 sm:bottom-4 sm:p-3 lg:sticky lg:inset-auto lg:bottom-0 lg:z-10 lg:rounded-none lg:border-x-0 lg:border-b-0 lg:border-t lg:border-emerald-900/30 lg:bg-[#0B0914]/95 lg:shadow-none lg:backdrop-blur-md">
             {errorMsg && <p role="alert" className="mb-2 rounded-lg border border-red-700/50 bg-red-950/60 px-3 py-2 text-xs text-red-200">{errorMsg}</p>}
             <div className="flex items-center gap-1.5 sm:gap-2">
               {/* Hidden File Input */}
@@ -797,7 +806,7 @@ export default function AIChat() {
             <p className="mt-2 hidden text-center text-[10px] font-medium text-emerald-300/50 sm:block">
               TerraMind Copilot peut analyser des images de feuilles, insectes ou bilans comptables.
             </p>
-          </form>
+          </form>}
         </section>
       </div>
 
