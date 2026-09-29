@@ -81,8 +81,15 @@ export async function generateAIResponse(
   const basePrompt = systemPromptOverride || TERRAMIND_SYSTEM_PROMPT;
   const systemInstruction = userContext ? `${basePrompt}\n\n${userContext}` : basePrompt;
 
-  const contents = messages
+  const conversation = messages
     .filter((message) => message.role === "user" || message.role === "assistant")
+    .slice();
+
+  while (conversation[0]?.role === "assistant") {
+    conversation.shift();
+  }
+
+  const contents = conversation
     .map((message) => {
       const parts: Array<Record<string, unknown>> = [];
 
@@ -126,14 +133,11 @@ export async function generateAIResponse(
   }
 
   // Modèles valides Gemini ordonnés par préférence et repli automatique (fallback)
-  const candidateModels = [
+  const candidateModels = [...new Set([
     process.env.GEMINI_MODEL,
-    "gemini-3.6-flash",
     "gemini-2.5-flash",
     "gemini-2.0-flash",
-    "gemini-1.5-flash",
-    "gemini-1.5-pro",
-  ].filter(Boolean) as string[];
+  ].filter((model): model is string => Boolean(model)))];
 
   let lastError: any = null;
 

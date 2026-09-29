@@ -64,7 +64,7 @@ export async function POST(request: Request) {
 
     // 4. Validation des données du corps de la requête
     const body = await request.json().catch(() => ({}));
-    const userMessage: string = body.message?.trim() || "";
+    const userMessage = typeof body.message === "string" ? body.message.trim() : "";
     const MAX_MESSAGE_LENGTH = 4000;
 
     if (userMessage.length > MAX_MESSAGE_LENGTH) {
@@ -155,7 +155,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error: "AI_PROVIDER_ERROR",
-          message: "Le service IA est temporairement indisponible ou surchargé. Réessayez dans un instant.",
+          message: "Gemini n’a pas pu répondre. Vérifiez la clé GEMINI_API_KEY, le quota gratuit Google AI Studio et la disponibilité du modèle.",
         },
         { status: 502 }
       );

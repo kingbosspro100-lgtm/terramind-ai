@@ -39,6 +39,8 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 L’assistant nécessite une clé Gemini configurée côté serveur avec la variable `GEMINI_API_KEY` (ou `AI_API_KEY`). En local, ajouter cette variable dans `.env.local`; en production, l’ajouter aux variables d’environnement du fournisseur d’hébergement puis redéployer. Ne pas utiliser un préfixe `NEXT_PUBLIC_` pour cette clé.
 
+Le modèle par défaut est `gemini-2.5-flash`, utilisable avec le quota gratuit Google AI Studio selon les limites et disponibilités de Google. Appliquer également `supabase/migrations/20260929_ai_quota_rpc.sql` pour que la consommation des quotas n’annule pas une réponse générée.
+
 ## Suppression différée des comptes
 
 Appliquer `supabase/migrations/20260929_account_deletion_grace_period.sql` au projet Supabase avant d’activer la suppression de compte. Configurer `SUPABASE_SERVICE_ROLE_KEY` et `CRON_SECRET` dans les variables d’environnement serveur du déploiement. Ne jamais exposer la clé de service avec un préfixe `NEXT_PUBLIC_`.

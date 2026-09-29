@@ -156,6 +156,7 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
                     key={item.href}
                     href={item.href}
                     onClick={closeSidebar}
+                    onNavigate={closeSidebar}
                     className={`group flex items-center justify-between rounded-2xl px-4 py-3.5 transition-all duration-300 ${
                       active
                         ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-600/40 font-bold"
