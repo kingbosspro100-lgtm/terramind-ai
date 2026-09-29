@@ -1,18 +1,7 @@
 import { redirect } from "next/navigation";
 import { isAdmin } from "@/services/admin";
-import { getAdminAnalytics } from "@/services/adminAnalytics";
-import { createClient } from "@/lib/server";
+import { getAdminAnalytics, getAdminPayments, type AdminPayment } from "@/services/adminData";
 import { AlertTriangle, TrendingUp, Users, DollarSign, PieChart, ShieldAlert } from "lucide-react";
-
-type Payment = {
-  id: string;
-  amount: number | string | null;
-  status: string | null;
-  created_at: string | null;
-  plan: string | null;
-  payment_method: string | null;
-  transaction_id: string | null;
-};
 
 export default async function AdminRevenuePage() {
   const admin = await isAdmin();
@@ -20,8 +9,6 @@ export default async function AdminRevenuePage() {
   if (!admin) {
     redirect("/dashboard");
   }
-
-  const supabase = await createClient();
 
   // 1. Récupération des analytics SaaS (MRR, Churn, CAC, LTV)
   let analytics: any = null;
@@ -31,21 +18,10 @@ export default async function AdminRevenuePage() {
     console.error("Erreur calcul analytics admin:", err);
   }
 
-  // 2. Récupération des paiements
-  const { data, error } = await supabase
-    .from("payments")
-    .select("*")
-    .eq("status", "paid")
-    .order("created_at", { ascending: false });
-
-  if (error) {
-    console.error("Erreur récupération paiements :", error);
-  }
-
-  const payments: Payment[] = (data ?? []) as Payment[];
+  const payments = await getAdminPayments();
 
   const totalRevenue = analytics?.revenue?.total ?? payments.reduce(
-    (total: number, payment: Payment) => total + Number(payment.amount ?? 0),
+    (total: number, payment: AdminPayment) => total + Number(payment.amount ?? 0),
     0
   );
 
@@ -175,7 +151,7 @@ export default async function AdminRevenuePage() {
                       </td>
                     </tr>
                   ) : (
-                    payments.map((payment: Payment) => (
+                    payments.map((payment: AdminPayment) => (
                       <tr key={payment.id} className="border-b border-white/5 transition hover:bg-white/[0.03]">
                         <td className="px-6 py-4 text-slate-400">
                           {payment.created_at
@@ -190,7 +166,7 @@ export default async function AdminRevenuePage() {
                         </td>
                         <td className="px-6 py-4 font-semibold text-white uppercase">{payment.plan ?? "—"}</td>
                         <td className="px-6 py-4 text-slate-300">{payment.payment_method ?? "—"}</td>
-                        <td className="px-6 py-4 font-mono text-xs text-slate-500">{payment.transaction_id ?? "—"}</td>
+                        <td className="px-6 py-4 font-mono text-xs text-slate-500">{payment.reference ?? "—"}</td>
                         <td className="px-6 py-4 font-bold text-emerald-400">
                           {Number(payment.amount ?? 0).toLocaleString("fr-FR")} FCFA
                         </td>

@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { isAdmin } from "@/services/admin";
-import { getAdminAnalytics } from "@/services/adminAnalytics";
+import { getAdminAnalytics } from "@/services/adminData";
 
 export default async function AdminPage() {
   const admin = await isAdmin();
@@ -328,7 +328,7 @@ export default async function AdminPage() {
 
         {/* NAVIGATION */}
 
-        <section className="mt-10 grid gap-4 md:grid-cols-4">
+        <section className="mt-10 grid gap-4 md:grid-cols-3 xl:grid-cols-6">
 
           <a
             href="/admin/revenus"
@@ -366,6 +366,27 @@ export default async function AdminPage() {
 
             <p className="mt-2 text-sm text-slate-500">
               Gérer les retours communauté.
+            </p>
+          </a>
+
+          <a
+            href="/admin/utilisateurs"
+            className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 transition hover:border-emerald-400/30 hover:bg-white/[0.05]"
+          >
+            <p className="font-semibold">Utilisateurs & données</p>
+            <p className="mt-2 text-sm text-slate-500">Profils, contacts et activité enregistrée.</p>
+          </a>
+
+          <a
+            href="/admin/markets"
+            className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 transition hover:border-emerald-400/30 hover:bg-white/[0.05]"
+          >
+            <p className="font-semibold">
+              Import prix de marché
+            </p>
+
+            <p className="mt-2 text-sm text-slate-500">
+              Ajouter des relevés vérifiés depuis un fichier.
             </p>
           </a>
 

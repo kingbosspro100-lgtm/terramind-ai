@@ -43,6 +43,7 @@ export async function middleware(request: NextRequest) {
   // 1. Check Supabase Auth and refresh cookies
   let hasSupabaseUser = false;
   let currentUserId: string | null = null;
+  let hasPendingDeletion = false;
 
   try {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://zjqepfcahnvlxyexymer.supabase.co";
@@ -70,6 +71,7 @@ export async function middleware(request: NextRequest) {
     if (user && !user.email?.endsWith("@deleted.invalid") && !user.email?.startsWith("deleted_")) {
       hasSupabaseUser = true;
       currentUserId = user.id;
+      hasPendingDeletion = Boolean(user.app_metadata?.pending_deletion_at);
     }
   } catch (e) {
     // ignore
@@ -87,6 +89,21 @@ export async function middleware(request: NextRequest) {
   }
 
   const isAuthenticated = hasSupabaseUser || hasNextAuthSession;
+
+  if (hasPendingDeletion) {
+    const canCancelDeletion = pathname === "/account-deletion-pending" ||
+      (pathname === "/api/user/delete" && request.method === "DELETE");
+
+    if (!canCancelDeletion) {
+      if (pathname.startsWith("/api/")) {
+        return NextResponse.json(
+          { error: "Compte en attente de suppression. Reconnectez-vous pour annuler la demande." },
+          { status: 403 }
+        );
+      }
+      return NextResponse.redirect(new URL("/account-deletion-pending", request.url));
+    }
+  }
 
   // Redirect to login if accessing protected route without authentication
   if (isProtectedRoute && !isAuthenticated) {

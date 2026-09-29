@@ -5,7 +5,7 @@ import {
   getMonthlyMRR,
   getMonthlyGrowth,
   getMonthlyChurn,
-} from "@/services/adminAnalytics";
+} from "@/services/adminData";
 
 export default async function AdminAnalyticsPage() {
   const admin = await isAdmin();

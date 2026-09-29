@@ -45,9 +45,9 @@ export default function ProfilePage() {
           setProfile(prev => ({
             ...prev,
             full_name: data.full_name || user.user_metadata?.full_name || "",
-            phone: data.phone || "",
-            company_name: data.company_name || "",
-            avatar_url: data.avatar_url || "",
+            phone: data.phone || user.user_metadata?.phone || "",
+            company_name: data.company_name || user.user_metadata?.company_name || "",
+            avatar_url: data.avatar_url || user.user_metadata?.avatar_url || "",
             role: data.role || "seller"
           }));
         } else {
@@ -57,8 +57,8 @@ export default function ProfilePage() {
             full_name: user.user_metadata?.full_name || "",
           }));
         }
-      } catch (error: any) {
-        console.error("Error loading user data:", error.message);
+      } catch (error) {
+        console.error("Error loading user data:", error instanceof Error ? error.message : error);
       } finally {
         setLoading(false);
       }
@@ -92,12 +92,15 @@ export default function ProfilePage() {
 
       if (error) throw error;
       
-      await supabase.auth.updateUser({
+      const { error: metadataError } = await supabase.auth.updateUser({
         data: {
           full_name: profile.full_name,
+          phone: profile.phone,
+          company_name: profile.company_name,
           avatar_url: profile.avatar_url,
         },
       });
+      if (metadataError) throw metadataError;
 
       if (typeof window !== "undefined") {
         window.dispatchEvent(new Event("profile_updated"));
@@ -105,7 +108,7 @@ export default function ProfilePage() {
 
       setSuccessMsg(true);
       setTimeout(() => setSuccessMsg(false), 3000);
-    } catch (error: any) {
+    } catch {
       setErrorMsg("Impossible de mettre à jour le profil.");
     } finally {
       setSaving(false);
@@ -184,16 +187,17 @@ export default function ProfilePage() {
                     if (upsertError) throw upsertError;
 
                     // Update auth user metadata
-                    await supabase.auth.updateUser({
+                    const { error: metadataError } = await supabase.auth.updateUser({
                       data: { avatar_url: targetUrl }
                     });
+                    if (metadataError) throw metadataError;
 
                     setProfile((p) => ({ ...p, avatar_url: targetUrl }));
 
                     if (typeof window !== "undefined") {
                       window.dispatchEvent(new Event("profile_updated"));
                     }
-                  } catch (err: any) {
+                  } catch (err) {
                     console.error("Upload error:", err);
                     setErrorMsg("Impossible d'uploader l'image de profil.");
                   } finally {

@@ -34,3 +34,9 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Suppression différée des comptes
+
+Appliquer `supabase/migrations/20260929_account_deletion_grace_period.sql` au projet Supabase avant d’activer la suppression de compte. Configurer `SUPABASE_SERVICE_ROLE_KEY` et `CRON_SECRET` dans les variables d’environnement serveur du déploiement. Ne jamais exposer la clé de service avec un préfixe `NEXT_PUBLIC_`.
+
+Sur Vercel, `vercel.json` exécute chaque jour `/api/cron/purge-deleted-accounts` à 03:00 UTC. Pour un autre hébergeur, planifier une requête GET vers cette route avec l’en-tête `Authorization: Bearer <CRON_SECRET>`. La demande est annulable en se reconnectant pendant les 7 jours précédant la purge.

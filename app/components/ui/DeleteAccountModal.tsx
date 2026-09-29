@@ -37,7 +37,7 @@ export default function DeleteAccountModal({
             </div>
             <div>
               <h3 className="text-lg font-extrabold text-white">Supprimer le compte</h3>
-              <p className="text-xs text-red-200/70 font-medium">Action irréversible</p>
+              <p className="text-xs text-amber-200/80 font-medium">Délai d’annulation : 7 jours</p>
             </div>
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-white p-1">
@@ -45,8 +45,8 @@ export default function DeleteAccountModal({
           </button>
         </div>
 
-        <p className="text-xs text-red-100/90 leading-relaxed font-medium">
-          Êtes-vous absolument sûr de vouloir supprimer définitivement votre compte TerraMind AI ? Toutes vos exploitations, données de récoltes, inventaires et historiques de conversations IA seront supprimés.
+        <p className="text-sm text-red-100/90 leading-relaxed">
+          Votre compte sera inaccessible dès maintenant. Toutes vos données seront supprimées définitivement après 7 jours. Reconnectez-vous avant la date prévue pour annuler la suppression.
         </p>
 
         <div className="pt-3 border-t border-red-900/30 flex items-center justify-end gap-3">

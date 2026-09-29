@@ -1,58 +1,104 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/server";
-import { getCurrentUser } from "@/lib/auth-helper";
+import { createAdminClient } from "@/lib/supabase-admin";
+
+async function getSupabaseUser() {
+  const supabase = await createClient();
+  const { data: { user }, error } = await supabase.auth.getUser();
+  if (error || !user) return null;
+  return { supabase, user };
+}
 
 export async function POST() {
   try {
-    const user = await getCurrentUser();
-
-    if (!user || !user.id) {
+    const authenticated = await getSupabaseUser();
+    if (!authenticated) {
       return NextResponse.json(
         { error: "Utilisateur non authentifié." },
         { status: 401 }
       );
     }
 
-    const supabase = await createClient();
-    const userId = user.id;
+    const { supabase, user } = authenticated;
+    const admin = createAdminClient();
+    const requestedAt = new Date();
+    const scheduledFor = new Date(requestedAt.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString();
+    const { error: requestError } = await admin
+      .from("account_deletion_requests")
+      .upsert({ user_id: user.id, requested_at: requestedAt.toISOString(), scheduled_for: scheduledFor });
 
-    // 1. Clean up user database records across all user tables
-    try {
-      await supabase.from("crops").delete().eq("user_id", userId);
-      await supabase.from("transactions").delete().eq("user_id", userId);
-      await supabase.from("stock").delete().eq("user_id", userId);
-      await supabase.from("farms").delete().eq("user_id", userId);
-      await supabase.from("subscriptions").delete().eq("user_id", userId);
-      await supabase.from("payments").delete().eq("user_id", userId);
-      await supabase.from("ai_usage").delete().eq("user_id", userId);
-      await supabase.from("ai_weekly_ads").delete().eq("user_id", userId);
-      await supabase.from("users_profile").delete().eq("id", userId);
-    } catch (dbErr) {
-      console.warn("Notice during user tables cleanup:", dbErr);
+    if (requestError) throw requestError;
+
+    const { error: metadataError } = await admin.auth.admin.updateUserById(user.id, {
+      app_metadata: {
+        ...user.app_metadata,
+        pending_deletion_at: scheduledFor,
+      },
+    });
+
+    if (metadataError) {
+      await admin.from("account_deletion_requests").delete().eq("user_id", user.id);
+      throw metadataError;
     }
 
-    // 2. Invalidate user auth credentials so logging back in fails
-    try {
-      await supabase.auth.updateUser({
-        email: `deleted_${Date.now()}_${userId}@deleted.invalid`,
-        password: `DELETED_${Date.now()}_${Math.random()}`,
-      });
-    } catch (authErr) {
-      console.warn("Auth update notice on deletion:", authErr);
-    }
-
-    // 3. Sign out session
     await supabase.auth.signOut();
 
     return NextResponse.json({
       success: true,
-      message: "Compte supprimé définitivement.",
+      scheduledFor,
+      message: "La suppression du compte est programmée dans 7 jours. Vous pouvez l’annuler en vous reconnectant avant cette date.",
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Account deletion route error:", error);
     return NextResponse.json(
-      { error: error?.message || "Impossible de supprimer le compte." },
+      { error: "Impossible de programmer la suppression du compte." },
       { status: 500 }
     );
+  }
+}
+
+export async function DELETE() {
+  try {
+    const authenticated = await getSupabaseUser();
+    if (!authenticated) {
+      return NextResponse.json({ error: "Utilisateur non authentifié." }, { status: 401 });
+    }
+
+    const { user } = authenticated;
+    const admin = createAdminClient();
+    const { data: request, error: requestError } = await admin
+      .from("account_deletion_requests")
+      .select("user_id")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (requestError) throw requestError;
+    if (!request) {
+      return NextResponse.json({ error: "Aucune suppression en attente." }, { status: 404 });
+    }
+
+    const appMetadata = { ...(user.app_metadata ?? {}) };
+    delete appMetadata.pending_deletion_at;
+    const { error: metadataError } = await admin.auth.admin.updateUserById(user.id, {
+      app_metadata: appMetadata,
+    });
+    if (metadataError) throw metadataError;
+
+    const { error: deleteError } = await admin
+      .from("account_deletion_requests")
+      .delete()
+      .eq("user_id", user.id);
+
+    if (deleteError) {
+      await admin.auth.admin.updateUserById(user.id, {
+        app_metadata: { ...appMetadata, pending_deletion_at: new Date().toISOString() },
+      });
+      throw deleteError;
+    }
+
+    return NextResponse.json({ success: true, message: "La suppression du compte a été annulée." });
+  } catch (error) {
+    console.error("Account deletion cancellation error:", error);
+    return NextResponse.json({ error: "Impossible d’annuler la suppression du compte." }, { status: 500 });
   }
 }

@@ -363,7 +363,7 @@ export default function AIChat() {
   const maxWeeklyAds = quota ? (quota.maxWeeklyRewards ?? quota.maxMonthlyRewards ?? 1) : 1;
 
   return (
-    <main className="mx-auto flex h-[calc(100vh-100px)] max-w-7xl flex-col gap-4 pb-4 text-white">
+    <main className="mx-auto flex h-[calc(100dvh-8rem)] min-h-[24rem] w-full max-w-7xl flex-col gap-3 pb-[env(safe-area-inset-bottom)] text-white">
       {/* Header with Dynamic Quota Counter */}
       <header className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between border-b border-emerald-900/30 pb-4 shrink-0">
         <div>
@@ -419,9 +419,9 @@ export default function AIChat() {
       </header>
 
       {/* Main Layout: Sidebar Conversations + Chat Body */}
-      <div className="flex flex-col lg:flex-row gap-4 flex-1 min-h-0">
+      <div className="flex min-h-0 flex-1 flex-col gap-3 lg:flex-row lg:gap-4">
         {/* Left Sidebar: Conversations & Suggestions */}
-        <aside className="w-full lg:w-72 flex flex-col gap-4 shrink-0 overflow-y-auto pr-1 scrollbar-hide">
+        <aside className="hidden w-full shrink-0 flex-col gap-4 overflow-y-auto pr-1 scrollbar-hide lg:flex lg:w-72">
           {/* New Chat Button */}
           <button
             onClick={createNewChat}
@@ -490,10 +490,23 @@ export default function AIChat() {
           </div>
         </aside>
 
+        <div className="flex shrink-0 items-center justify-between gap-3 lg:hidden">
+          <p className="min-w-0 truncate text-xs font-medium text-emerald-200/80">
+            {currentSession?.title || "Nouvelle conversation"}
+          </p>
+          <button
+            type="button"
+            onClick={createNewChat}
+            className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-emerald-700/50 bg-emerald-950/50 px-3 py-2 text-xs font-semibold text-emerald-100"
+          >
+            <Plus className="h-4 w-4" /> Nouvelle
+          </button>
+        </div>
+
         {/* Main Chat Box */}
-        <section className="flex-1 rounded-3xl border border-emerald-900/30 bg-gradient-to-b from-[#181436] to-[#050A07] shadow-2xl flex flex-col min-h-0 overflow-hidden relative">
+        <section className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-emerald-900/30 bg-gradient-to-b from-[#181436] to-[#050A07] shadow-2xl lg:rounded-3xl">
           {/* Messages Scroll Container */}
-          <div className="flex-1 space-y-4 overflow-y-auto p-6">
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-3 pb-28 sm:p-5 sm:pb-28 lg:p-6">
             {messages.map((message, index) => (
               <div key={index} className={`flex gap-3 ${message.role === "user" ? "justify-end" : ""}`}>
                 <div className={`flex max-w-[85%] gap-3 ${message.role === "user" ? "flex-row-reverse" : ""}`}>
@@ -641,8 +654,9 @@ export default function AIChat() {
           )}
 
           {/* Input Form with Audio Dictation & Image/File Attachment */}
-          <form onSubmit={send} className="border-t border-emerald-900/30 p-3 bg-[#0B0914]/80 backdrop-blur-md">
-            <div className="flex items-center gap-2">
+          <form onSubmit={send} className="fixed inset-x-3 bottom-3 z-50 shrink-0 rounded-2xl border border-emerald-400/60 bg-[#0B0914] p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-[0_12px_48px_rgba(0,0,0,0.8)] sm:inset-x-5 sm:bottom-4 sm:p-3 lg:sticky lg:inset-auto lg:bottom-0 lg:z-10 lg:rounded-none lg:border-x-0 lg:border-b-0 lg:border-t lg:border-emerald-900/30 lg:bg-[#0B0914]/95 lg:shadow-none lg:backdrop-blur-md">
+            {errorMsg && <p role="alert" className="mb-2 rounded-lg border border-red-700/50 bg-red-950/60 px-3 py-2 text-xs text-red-200">{errorMsg}</p>}
+            <div className="flex items-center gap-1.5 sm:gap-2">
               {/* Hidden File Input */}
               <input
                 ref={fileInputRef}
@@ -658,24 +672,27 @@ export default function AIChat() {
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isExhausted || pending}
                 title="Joindre une photo de culture ou un fichier"
-                className="p-3 rounded-2xl bg-[#0A100C] border border-emerald-900/50 text-emerald-300 hover:text-white hover:border-emerald-500/50 transition disabled:opacity-50 shrink-0"
+                className="shrink-0 rounded-xl border border-emerald-900/50 bg-[#0A100C] p-2.5 text-emerald-300 transition hover:border-emerald-500/50 hover:text-white disabled:opacity-50 sm:rounded-2xl sm:p-3"
               >
                 <Paperclip className="h-5 w-5" />
               </button>
 
               {/* Input Text Box */}
               <input
+                type="text"
                 value={input}
                 disabled={isExhausted || pending}
                 onChange={(event) => setInput(event.target.value)}
+                enterKeyHint="send"
+                aria-label="Votre message"
                 placeholder={
                   isListening
-                    ? "🎤 Écoute en cours... Parlez maintenant"
+                    ? "Écoute en cours… Parlez maintenant"
                     : isExhausted
-                    ? t.aiExhaustedMsg
-                    : t.aiPlaceholder
+                    ? t.aiExhaustedMsg || "Quota atteint"
+                    : t.aiPlaceholder || "Écrivez votre message…"
                 }
-                className={`min-w-0 flex-1 rounded-2xl border bg-[#0A100C] px-4 py-3 text-sm text-white placeholder:text-emerald-300/40 outline-none transition disabled:opacity-50 ${
+                  className={`h-12 min-w-0 flex-1 rounded-xl border bg-white px-3 text-base text-slate-950 placeholder:text-slate-500 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/30 disabled:bg-slate-200 disabled:text-slate-600 sm:rounded-2xl sm:px-4 sm:text-sm ${
                   isListening ? "border-red-500 animate-pulse ring-2 ring-red-500/30" : "border-emerald-900/50 focus:border-emerald-500/60"
                 }`}
               />
@@ -686,7 +703,7 @@ export default function AIChat() {
                 onClick={toggleVoiceRecording}
                 disabled={isExhausted || pending}
                 title={isListening ? "Arrêter la dictée vocale" : "Commencer la dictée vocale (Audio Transcripteur)"}
-                className={`p-3 rounded-2xl border transition shrink-0 ${
+                className={`shrink-0 rounded-xl border p-2.5 transition sm:rounded-2xl sm:p-3 ${
                   isListening
                     ? "bg-red-600 text-white border-red-400 animate-bounce shadow-lg shadow-red-600/40"
                     : "bg-[#0A100C] border-emerald-900/50 text-emerald-400 hover:text-white hover:border-emerald-500/50"
@@ -698,13 +715,15 @@ export default function AIChat() {
               {/* Send Button */}
               <button
                 disabled={pending || isExhausted || (!input.trim() && !selectedFile)}
-                className="rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 px-5 py-3 text-white disabled:opacity-50 hover:opacity-90 transition shadow-lg shadow-emerald-600/30 shrink-0"
+                type="submit"
+                title="Envoyer le message"
+                className="shrink-0 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 p-2.5 text-white shadow-lg shadow-emerald-600/30 transition hover:opacity-90 disabled:opacity-50 sm:rounded-2xl sm:px-4 sm:py-3"
                 aria-label="Envoyer"
               >
                 <SendHorizontal className="h-5 w-5" />
               </button>
             </div>
-            <p className="text-center text-[10px] text-emerald-300/40 mt-2 font-medium">
+            <p className="mt-2 hidden text-center text-[10px] font-medium text-emerald-300/50 sm:block">
               TerraMind Copilot peut analyser des images de feuilles, insectes ou bilans comptables.
             </p>
           </form>

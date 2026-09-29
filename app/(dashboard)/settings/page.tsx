@@ -78,40 +78,24 @@ export default function SettingsPage() {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          const cachedAvatar = localStorage.getItem(`avatar_${user.id}`);
-          const cachedProfStr = localStorage.getItem(`profile_${user.id}`);
-          const cachedProf = cachedProfStr ? JSON.parse(cachedProfStr) : null;
+          const { data: profData, error: profileError } = await supabase
+            .from("users_profile")
+            .select("full_name, phone, company_name, avatar_url, role")
+            .eq("id", user.id)
+            .maybeSingle();
+
+          if (profileError) throw profileError;
 
           setProfile((prev) => ({
             ...prev,
             id: user.id,
             email: user.email || "",
-            full_name: cachedProf?.full_name || user.user_metadata?.full_name || "",
-            phone: cachedProf?.phone || "",
-            company_name: cachedProf?.company_name || "",
-            avatar_url: cachedProf?.avatar_url || cachedAvatar || user.user_metadata?.avatar_url || "",
+            full_name: profData?.full_name || user.user_metadata?.full_name || "",
+            phone: profData?.phone || user.user_metadata?.phone || "",
+            company_name: profData?.company_name || user.user_metadata?.company_name || "",
+            avatar_url: profData?.avatar_url || user.user_metadata?.avatar_url || "",
+            role: profData?.role || "seller",
           }));
-
-          try {
-            const { data: profData } = await supabase
-              .from("users_profile")
-              .select("*")
-              .eq("id", user.id)
-              .maybeSingle();
-
-            if (profData) {
-              setProfile((prev) => ({
-                ...prev,
-                full_name: profData.full_name || prev.full_name,
-                phone: profData.phone || prev.phone,
-                company_name: profData.company_name || prev.company_name,
-                avatar_url: profData.avatar_url || cachedAvatar || prev.avatar_url,
-                role: profData.role || "seller",
-              }));
-            }
-          } catch (dbErr) {
-            console.warn("DB profile load notice:", dbErr);
-          }
         } else {
           setProfile((prev) => ({
             ...prev,
@@ -136,6 +120,7 @@ export default function SettingsPage() {
         }
       } catch (err) {
         console.error("Erreur lors du chargement des paramètres:", err);
+        setErrorMsg(language === "fr" ? "Impossible de charger les données du profil depuis le serveur." : "Unable to load profile data from the server.");
       } finally {
         setLoading(false);
       }
@@ -162,7 +147,7 @@ export default function SettingsPage() {
         
         if (targetUserId) {
           const cleanFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-          const path = `${targetUserId}/${Date.now()}_${cleanFileName}`;
+          const path = `avatars/${targetUserId}/${Date.now()}_${cleanFileName}`;
           
           const { error: uploadError } = await supabase.storage
             .from("avatars")
@@ -187,26 +172,27 @@ export default function SettingsPage() {
         });
       }
 
-      setProfile((p) => ({ ...p, avatar_url: publicUrl }));
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError) throw authError;
 
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        const targetUserId = user?.id || profile.id;
+      if (user) {
+        const { error: profileError } = await supabase.from("users_profile").upsert({
+          id: user.id,
+          avatar_url: publicUrl,
+          updated_at: new Date().toISOString(),
+        });
+        if (profileError) throw profileError;
 
-        if (targetUserId) {
-          localStorage.setItem(`avatar_${targetUserId}`, publicUrl);
-          await supabase.from("users_profile").upsert({
-            id: targetUserId,
-            avatar_url: publicUrl,
-            updated_at: new Date().toISOString(),
-          });
-          await supabase.auth.updateUser({
-            data: { avatar_url: publicUrl, picture: publicUrl },
-          });
-        }
-      } catch (dbErr) {
-        console.warn("DB Avatar Save notice:", dbErr);
+        const { error: metadataError } = await supabase.auth.updateUser({
+          data: { avatar_url: publicUrl, picture: publicUrl },
+        });
+        if (metadataError) throw metadataError;
+        localStorage.setItem(`avatar_${user.id}`, publicUrl);
+      } else {
+        localStorage.setItem(`avatar_${profile.id || "demo_user"}`, publicUrl);
       }
+
+      setProfile((current) => ({ ...current, avatar_url: publicUrl }));
 
       if (typeof window !== "undefined") {
         window.dispatchEvent(new Event("profile_updated"));
@@ -229,28 +215,36 @@ export default function SettingsPage() {
     setSuccessMsg("");
 
     try {
-      const targetId = profile.id || "demo_user";
-      localStorage.setItem(`profile_${targetId}`, JSON.stringify(profile));
-      localStorage.setItem(`name_${targetId}`, profile.full_name);
-      if (profile.avatar_url) {
-        localStorage.setItem(`avatar_${targetId}`, profile.avatar_url);
-      }
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError) throw authError;
 
-      try {
-        if (profile.id) {
-          await supabase.from("users_profile").upsert({
-            id: profile.id,
+      if (user) {
+        const { error: profileError } = await supabase.from("users_profile").upsert({
+          id: user.id,
+          full_name: profile.full_name,
+          phone: profile.phone,
+          company_name: profile.company_name,
+          role: profile.role,
+          avatar_url: profile.avatar_url,
+          updated_at: new Date().toISOString(),
+        });
+        if (profileError) throw profileError;
+
+        const { error: metadataError } = await supabase.auth.updateUser({
+          data: {
             full_name: profile.full_name,
             phone: profile.phone,
             company_name: profile.company_name,
-            role: profile.role,
             avatar_url: profile.avatar_url,
-            updated_at: new Date().toISOString(),
-          });
-        }
-      } catch (dbErr) {
-        console.warn("DB Profile save notice:", dbErr);
+          },
+        });
+        if (metadataError) throw metadataError;
       }
+
+      const targetId = user?.id || profile.id || "demo_user";
+      localStorage.setItem(`profile_${targetId}`, JSON.stringify(profile));
+      localStorage.setItem(`name_${targetId}`, profile.full_name);
+      if (profile.avatar_url) localStorage.setItem(`avatar_${targetId}`, profile.avatar_url);
 
       if (typeof window !== "undefined") {
         window.dispatchEvent(new Event("profile_updated"));
@@ -311,14 +305,15 @@ export default function SettingsPage() {
     try {
       const res = await fetch("/api/user/delete", { method: "POST" });
       if (!res.ok) {
-        throw new Error("Erreur suppression");
+        throw new Error("Impossible de programmer la suppression.");
       }
+      const result = await res.json();
       if (typeof window !== "undefined") {
         localStorage.clear();
       }
       await supabase.auth.signOut();
       setIsDeleteModalOpen(false);
-      router.push("/login");
+      router.replace(`/account-deletion-pending?scheduledFor=${encodeURIComponent(result.scheduledFor)}`);
       router.refresh();
     } catch (e: any) {
       setErrorMsg("Impossible de supprimer le compte pour le moment.");
