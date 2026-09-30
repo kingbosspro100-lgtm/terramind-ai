@@ -9,22 +9,31 @@ export async function isAdmin() {
     return false;
   }
 
+  const allowedEmails = (process.env.ADMIN_EMAILS || "")
+    .split(",")
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean);
+  if (user.email && allowedEmails.includes(user.email.toLowerCase())) {
+    return true;
+  }
+
   const supabase = await createClient();
 
-  const { data, error } = await supabase
+  const { data: adminRecord, error: adminError } = await supabase
     .from("admin_users")
     .select("user_id")
     .eq("user_id", user.id)
     .maybeSingle();
 
-  if (error) {
-    console.error(
-      "Erreur vérification admin :",
-      error
-    );
+  if (!adminError && adminRecord) return true;
+  if (adminError) console.error("Erreur vérification admin_users:", adminError);
 
-    return false;
-  }
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .maybeSingle();
 
-  return !!data;
+  if (profileError) console.error("Erreur vérification du rôle administrateur:", profileError);
+  return ["admin", "superadmin"].includes(String(profile?.role || "").toLowerCase());
 }
