@@ -16,7 +16,7 @@ export default function DashboardLayout({
   };
 
   return (
-    <div className="flex min-h-screen bg-[#0B0914] text-slate-100 selection:bg-emerald-600 selection:text-white">
+    <div className="flex min-h-screen bg-transparent text-slate-100 selection:bg-brand-purple/40 selection:text-white">
 
       <Sidebar isOpen={isSidebarOpen} setIsOpen={updateSidebarOpen} />
 

@@ -39,7 +39,21 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 L’assistant nécessite une clé Gemini configurée côté serveur avec la variable `GEMINI_API_KEY` (ou `AI_API_KEY`). En local, ajouter cette variable dans `.env.local`; en production, l’ajouter aux variables d’environnement du fournisseur d’hébergement puis redéployer. Ne pas utiliser un préfixe `NEXT_PUBLIC_` pour cette clé.
 
-Le modèle par défaut est `gemini-3.8-flash`, testé avec le quota gratuit Google AI Studio selon les limites et disponibilités de Google. Appliquer également `supabase/migrations/20260929_ai_quota_rpc.sql` pour que la consommation des quotas n’annule pas une réponse générée.
+Le modèle par défaut est `gemini-flash-latest`, vérifié par appel réel avec le quota gratuit Google AI Studio; `gemini-3.8-flash` et `gemini-2.5-flash` restent en secours selon disponibilité. Appliquer également `supabase/migrations/20260929_ai_quota_rpc.sql` pour que la consommation des quotas n’annule pas une réponse générée.
+
+Une clé Gemini serveur (`GEMINI_API_KEY`) peut être remplacée pour une requête de test en envoyant `x-gemini-key` ou `apiKey` dans le corps de `/api/ai/chat`. Cette clé n’est ni persistée ni journalisée; préfère la variable serveur en production.
+
+## Alertes météo par courriel
+
+Appliquer `supabase/migrations/20261002_weather_alert_deliveries.sql`. Configurer `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`, `RESEND_API_KEY` et `RESEND_FROM_EMAIL` côté serveur. Vercel appelle `/api/cron/weather-alerts` toutes les cinq heures; le service déduplique les alertes par exploitation et par date.
+
+## Prix de marché par région
+
+Appliquer `supabase/migrations/20261002_market_price_departments.sql` avant d’importer la colonne facultative `department`. Les cours affichés sont les observations saisies/importées par l’équipe; aucune valeur fictive n’est fournie comme prix réel.
+
+## Configuration des alertes météo
+
+Appliquer `supabase/migrations/20261002_weather_alert_deliveries.sql` et configurer `CRON_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY` et `RESEND_FROM_EMAIL` dans l’hébergement. Le cron Vercel est prévu toutes les cinq heures; la fréquence réellement disponible dépend du plan Vercel.
 
 ## Suppression différée des comptes
 

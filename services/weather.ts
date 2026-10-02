@@ -1,9 +1,94 @@
+import type { SupportedCountry } from "@/types/database";
+
 export interface DepartmentConfig {
   id: string;
   name: string;
   chefLieu: string;
   lat: number;
   lon: number;
+}
+
+export const COUNTRY_SUBDIVISIONS: Record<SupportedCountry, string[]> = {
+  "Bénin": ["Alibori", "Atacora", "Atlantique", "Borgou", "Collines", "Couffo", "Donga", "Littoral", "Mono", "Ouémé", "Plateau", "Zou"],
+  "Côte d'Ivoire": [
+    "Agnéby-Tiassa", "Bafing", "Bagoué", "Bélier", "Béré", "Bounkani", "Cavally", "Folon", "Gbêkê", "Gbôklé", "Gôh", "Gontougo", "Grands-Ponts", "Guémon", "Hambol", "Haut-Sassandra", "Iffou", "Indénié-Djuablin", "Kabadougou", "La Mé", "Lôh-Djiboua", "Marahoué", "Mé", "Moronou", "Nawa", "N'Zi", "Poro", "San-Pédro", "Sud-Comoé", "Tchologo", "Tonkpi", "Worodougou", "Abidjan", "Yamoussoukro",
+  ],
+  "Cameroun": ["Adamaoua", "Centre", "Est", "Extrême-Nord", "Littoral", "Nord", "Nord-Ouest", "Ouest", "Sud", "Sud-Ouest"],
+  "Sénégal": ["Dakar", "Diourbel", "Fatick", "Kaffrine", "Kaolack", "Kédougou", "Kolda", "Louga", "Matam", "Saint-Louis", "Sédhiou", "Tambacounda", "Thiès", "Ziguinchor"],
+};
+
+const COUNTRY_CODES: Record<SupportedCountry, string> = {
+  "Bénin": "BJ",
+  "Côte d'Ivoire": "CI",
+  "Cameroun": "CM",
+  "Sénégal": "SN",
+};
+
+const SUBDIVISION_CHEF_LIEUX: Record<SupportedCountry, Record<string, string>> = {
+  "Bénin": {
+    Alibori: "Kandi", Atacora: "Natitingou", Atlantique: "Allada", Borgou: "Parakou",
+    Collines: "Dassa-Zoumé", Couffo: "Aplahoué", Donga: "Djougou", Littoral: "Cotonou",
+    Mono: "Lokossa", "Ouémé": "Porto-Novo", Plateau: "Pobè", Zou: "Abomey",
+  },
+  "Côte d'Ivoire": {
+    "Agnéby-Tiassa": "Agboville", Bafing: "Touba", Bagoué: "Boundiali", Bélier: "Yamoussoukro",
+    Béré: "Mankono", Bounkani: "Bouna", Cavally: "Guiglo", Folon: "Minignan", Gbêkê: "Bouaké",
+    Gbôklé: "Sassandra", Gôh: "Gagnoa", Gontougo: "Bondoukou", "Grands-Ponts": "Dabou",
+    Guémon: "Duékoué", Hambol: "Katiola", "Haut-Sassandra": "Daloa", Iffou: "Daoukro",
+    "Indénié-Djuablin": "Abengourou", Kabadougou: "Odienné", "La Mé": "Adzopé",
+    "Lôh-Djiboua": "Divo", Marahoué: "Bouaflé", Mé: "Adzopé", Moronou: "Bongouanou",
+    Nawa: "Soubré", "N'Zi": "Dimbokro", Poro: "Korhogo", "San-Pédro": "San-Pédro",
+    "Sud-Comoé": "Aboisso", Tchologo: "Ferkessédougou", Tonkpi: "Man", Worodougou: "Séguéla",
+    Abidjan: "Abidjan", Yamoussoukro: "Yamoussoukro",
+  },
+  "Cameroun": {
+    Adamaoua: "Ngaoundéré", Centre: "Yaoundé", Est: "Bertoua", "Extrême-Nord": "Maroua",
+    Littoral: "Douala", Nord: "Garoua", "Nord-Ouest": "Bamenda", Ouest: "Bafoussam",
+    Sud: "Ebolowa", "Sud-Ouest": "Buea",
+  },
+  "Sénégal": {
+    Dakar: "Dakar", Diourbel: "Diourbel", Fatick: "Fatick", Kaffrine: "Kaffrine",
+    Kaolack: "Kaolack", Kédougou: "Kédougou", Kolda: "Kolda", Louga: "Louga",
+    Matam: "Matam", "Saint-Louis": "Saint-Louis", Sédhiou: "Sédhiou",
+    Tambacounda: "Tambacounda", Thiès: "Thiès", Ziguinchor: "Ziguinchor",
+  },
+};
+
+export interface GeocodedLocation {
+  name: string;
+  latitude: number;
+  longitude: number;
+  admin1?: string;
+}
+
+export async function geocodeSubdivision(
+  country: SupportedCountry,
+  subdivision: string,
+): Promise<GeocodedLocation> {
+  const chefLieu = SUBDIVISION_CHEF_LIEUX[country][subdivision] || subdivision;
+  const params = new URLSearchParams({
+    name: chefLieu,
+    count: "10",
+    language: "fr",
+    format: "json",
+    countryCode: COUNTRY_CODES[country],
+  });
+  const response = await fetch(`https://geocoding-api.open-meteo.com/v1/search?${params}`);
+  if (!response.ok) throw new Error("Géocodage Open-Meteo indisponible.");
+
+  const payload: { results?: Array<GeocodedLocation & { country_code?: string }> } = await response.json();
+  const matches = (payload.results ?? []).filter((result) => result.country_code === COUNTRY_CODES[country]);
+  const normalizedChefLieu = chefLieu.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const normalizedSubdivision = subdivision.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const match = matches.find((result) =>
+    [result.name, result.admin1].some((value) => {
+      const normalized = value?.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+      return normalized === normalizedChefLieu || normalized === normalizedSubdivision;
+    }),
+  ) ?? matches[0];
+
+  if (!match) throw new Error(`Aucune coordonnée Open-Meteo trouvée pour ${subdivision}, ${country}.`);
+  return { name: match.name, latitude: match.latitude, longitude: match.longitude, admin1: match.admin1 };
 }
 
 export const BENIN_DEPARTMENTS: DepartmentConfig[] = [
@@ -36,7 +121,36 @@ export interface LiveWeatherData {
     rainProb: number;
     weatherCode: number;
     conditionText: string;
+    precipitationMm: number;
+    windSpeedMax: number;
   }>;
+}
+
+export interface AgriculturalWeatherAlert {
+  id: string;
+  severity: "warning" | "critical";
+  title: string;
+  recommendation: string;
+  day: string;
+}
+
+export function getAgriculturalWeatherAlerts(weather: LiveWeatherData): AgriculturalWeatherAlert[] {
+  return weather.forecast.flatMap((day) => {
+    const alerts: AgriculturalWeatherAlert[] = [];
+    if (day.precipitationMm > 20) {
+      alerts.push({ id: `${day.date}-rain`, severity: "warning", title: `Fortes pluies prévues (${day.precipitationMm} mm)`, recommendation: "Suspendre les épandages et vérifier le drainage des parcelles.", day: day.dayName });
+    }
+    if (day.windSpeedMax > 40) {
+      alerts.push({ id: `${day.date}-wind`, severity: "warning", title: `Vent fort prévu (${day.windSpeedMax} km/h)`, recommendation: "Éviter les traitements par pulvérisation et sécuriser les jeunes plants.", day: day.dayName });
+    }
+    if (day.tempMax >= 40) {
+      alerts.push({ id: `${day.date}-heat`, severity: "critical", title: `Chaleur extrême prévue (${day.tempMax} °C)`, recommendation: "Prévoir l’irrigation tôt le matin et protéger les plants sensibles.", day: day.dayName });
+    }
+    if (day.precipitationMm < 1 && day.tempMax >= 35) {
+      alerts.push({ id: `${day.date}-dry`, severity: "warning", title: "Risque de stress hydrique", recommendation: "Contrôler l’humidité du sol et planifier l’irrigation.", day: day.dayName });
+    }
+    return alerts;
+  });
 }
 
 export function getWeatherConditionText(code: number): string {
@@ -65,7 +179,7 @@ export async function getWeather(latitude: number, longitude: number) {
 }
 
 export async function fetchLiveDepartmentWeather(lat: number, lon: number): Promise<LiveWeatherData> {
-  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,precipitation,weather_code,wind_speed_10m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max&timezone=auto`;
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,precipitation,weather_code,wind_speed_10m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,wind_speed_10m_max&timezone=auto`;
 
   const res = await fetch(url);
   if (!res.ok) {
@@ -91,6 +205,8 @@ export async function fetchLiveDepartmentWeather(lat: number, lon: number): Prom
       rainProb: daily.precipitation_probability_max?.[idx] ?? Math.round((daily.precipitation_sum?.[idx] || 0) * 10),
       weatherCode: daily.weather_code[idx] ?? 0,
       conditionText: getWeatherConditionText(daily.weather_code[idx] ?? 0),
+      precipitationMm: daily.precipitation_sum?.[idx] ?? 0,
+      windSpeedMax: daily.wind_speed_10m_max?.[idx] ?? 0,
     };
   });
 

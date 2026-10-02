@@ -8,6 +8,7 @@ type MarketPriceRow = {
   product_name: string;
   market_name: string;
   country: string;
+  department?: string;
   price_fcfa: string | number;
   unit: string;
   recorded_at?: string;
@@ -24,6 +25,7 @@ const HEADER_ALIASES: Record<keyof MarketPriceRow, string[]> = {
   product_name: ["product_name", "produit", "nom_produit"],
   market_name: ["market_name", "marche", "nom_marche"],
   country: ["country", "pays"],
+  department: ["department", "departement", "region", "région"],
   price_fcfa: ["price_fcfa", "prix_fcfa", "prix"],
   unit: ["unit", "unite"],
   recorded_at: ["recorded_at", "date", "date_releve"],
@@ -54,6 +56,7 @@ function mapRows(rows: Record<string, unknown>[]): MarketPriceRow[] {
       product_name: String(getValue("product_name") ?? "").trim(),
       market_name: String(getValue("market_name") ?? "").trim(),
       country: String(getValue("country") ?? "").trim(),
+      department: String(getValue("department") ?? "").trim(),
       price_fcfa: String(getValue("price_fcfa") ?? "").trim(),
       unit: String(getValue("unit") ?? "").trim(),
       ...(dateValue instanceof Date
@@ -166,7 +169,7 @@ export default function AdminMarketPricesPage() {
               className="block w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-3 text-sm text-slate-200 file:mr-4 file:rounded-md file:border-0 file:bg-emerald-700 file:px-3 file:py-2 file:font-medium file:text-white hover:file:bg-emerald-600"
             />
             <p className="mt-2 text-xs text-slate-400">
-              Colonnes requises : produit, marché, pays, prix_fcfa, unité. Date facultative au format AAAA-MM-JJ. 500 lignes maximum, 2 Mo.
+              Colonnes requises : produit, marché, pays, prix_fcfa, unité. Département/région et date (AAAA-MM-JJ) facultatifs. 500 lignes maximum, 2 Mo.
             </p>
           </div>
 

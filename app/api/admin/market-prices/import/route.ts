@@ -10,6 +10,7 @@ type IncomingPrice = {
   product_name?: unknown;
   market_name?: unknown;
   country?: unknown;
+  department?: unknown;
   price_fcfa?: unknown;
   unit?: unknown;
   recorded_at?: unknown;
@@ -62,6 +63,7 @@ export async function POST(request: Request) {
     const productName = typeof item.product_name === "string" ? item.product_name.trim() : "";
     const marketName = typeof item.market_name === "string" ? item.market_name.trim() : "";
     const country = typeof item.country === "string" ? item.country.trim() : "";
+    const department = typeof item.department === "string" ? item.department.trim() : "";
     const unit = typeof item.unit === "string" ? item.unit.trim() : "";
     const price = parsePrice(item.price_fcfa);
     const recordedAt = parseRecordedAt(item.recorded_at);
@@ -70,6 +72,7 @@ export async function POST(request: Request) {
       !productName || productName.length > 120 ||
       !marketName || marketName.length > 120 ||
       !isSupportedCountry(country) ||
+      department.length > 120 ||
       !unit || unit.length > 40 ||
       price === null || recordedAt === null
     ) {
@@ -81,6 +84,7 @@ export async function POST(request: Request) {
       product_name: productName,
       market_name: marketName,
       country,
+      ...(department ? { department } : {}),
       price_fcfa: price,
       unit,
       ...(recordedAt ? { recorded_at: recordedAt } : {}),

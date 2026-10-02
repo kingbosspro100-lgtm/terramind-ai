@@ -34,9 +34,9 @@ export default function Header({ toggleSidebar }: { toggleSidebar?: () => void }
       supabase.from("stock").select("name,category"),
     ]).then(([farms, crops, stock]) =>
       setAccountItems([
-        ...(farms.data ?? []).map((x: any) => ({ label: x.name, detail: x.city || "Exploitation", href: "/farms", type: "Exploitation" })),
-        ...(crops.data ?? []).map((x: any) => ({ label: x.name, detail: x.status || "Culture", href: "/crops", type: "Culture" })),
-        ...(stock.data ?? []).map((x: any) => ({ label: x.name, detail: x.category || "Produit en stock", href: "/stock", type: "Stock" })),
+        ...(farms.data ?? []).map((farm) => ({ label: farm.name, detail: farm.city || "Exploitation", href: "/farms", type: "Exploitation" })),
+        ...(crops.data ?? []).map((crop) => ({ label: crop.name, detail: crop.status || "Culture", href: "/crops", type: "Culture" })),
+        ...(stock.data ?? []).map((item) => ({ label: item.name, detail: item.category || "Produit en stock", href: "/stock", type: "Stock" })),
       ])
     );
   }, []);
@@ -46,26 +46,26 @@ export default function Header({ toggleSidebar }: { toggleSidebar?: () => void }
     .slice(0, 8);
 
   return (
-    <header className="sticky top-0 z-30 border-b border-emerald-900/20 bg-[#0B0914]/80 px-4 py-4 backdrop-blur-xl md:px-8">
+    <header className="sticky top-0 z-30 border-b border-white/10 bg-black/40 px-4 py-4 text-white shadow-[0_8px_32px_rgb(0_0_0/20%)] backdrop-blur-md md:px-8">
       <div className="relative flex h-16 items-center gap-4">
-        <button onClick={toggleSidebar} className="rounded-xl p-2 text-emerald-200 hover:bg-emerald-900/40 lg:hidden">
+        <button onClick={toggleSidebar} className="rounded-xl p-2 text-brand-cyan hover:bg-white/10 lg:hidden">
           <Menu className="h-6 w-6" />
         </button>
 
         <div className="relative hidden w-full max-w-lg sm:block">
-          <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-emerald-300/60" />
+          <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-cyan/70" />
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             onFocus={() => setFocused(true)}
             onBlur={() => setTimeout(() => setFocused(false), 150)}
             placeholder={t.searchPlaceholder}
-            className="w-full rounded-2xl border border-emerald-900/30 bg-[#0A100C] py-3 pl-11 pr-5 text-sm text-white outline-none placeholder:text-emerald-300/40 focus:border-emerald-500/50"
+            className="w-full rounded-xl border border-white/10 bg-brand-card/80 py-3 pl-11 pr-5 text-sm text-white outline-none placeholder:text-slate-500 focus:border-brand-cyan/60"
           />
 
           {focused && query && (
-            <div className="absolute left-0 top-full z-50 mt-2 w-full rounded-2xl border border-emerald-900/30 bg-[#181436] p-2 shadow-2xl">
-              <p className="px-2 py-1 text-xs font-bold text-emerald-400">Résultats pour « {query} »</p>
+            <div className="absolute left-0 top-full z-50 mt-2 w-full rounded-xl border border-white/10 bg-brand-card/95 p-2 shadow-2xl backdrop-blur-md">
+              <p className="px-2 py-1 text-xs font-bold text-brand-cyan">Résultats pour « {query} »</p>
               {results.length ? (
                 results.map((item, index) => (
                   <Link key={`${item.href}-${item.label}-${index}`} href={item.href} className="block rounded-xl px-3 py-2 hover:bg-emerald-900/20">

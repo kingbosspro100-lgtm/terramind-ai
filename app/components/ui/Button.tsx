@@ -17,8 +17,8 @@ export default function Button({
 }: Props) {
   const styles =
     variant === "primary"
-      ? "bg-emerald-600 text-white hover:bg-emerald-700"
-      : "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50";
+      ? "bg-gradient-gemini text-white shadow-lg shadow-brand-purple/20 hover:brightness-110"
+      : "border border-white/15 bg-white/5 text-slate-100 backdrop-blur-md hover:bg-white/10";
 
   return (
     <button

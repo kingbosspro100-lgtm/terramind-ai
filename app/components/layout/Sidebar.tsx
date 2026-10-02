@@ -119,17 +119,17 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
 
   return (
     <>
-      <aside className={`fixed left-0 top-0 z-50 flex h-dvh w-72 flex-col overflow-hidden border-r border-emerald-900/20 bg-[#0E0C1F] text-white transition-transform duration-300 lg:translate-x-0 ${isOpen ? "translate-x-0" : "-translate-x-full"}`}>
+      <aside className={`fixed left-0 top-0 z-50 flex h-dvh w-72 flex-col overflow-hidden border-r border-white/10 bg-black/40 text-white shadow-[0_0_36px_rgb(138_43_226/8%)] backdrop-blur-md transition-transform duration-300 lg:translate-x-0 ${isOpen ? "translate-x-0" : "-translate-x-full"}`}>
 
         {/* Top Logo */}
-        <div className="flex items-center justify-between px-6 py-6 border-b border-emerald-900/20">
+        <div className="flex items-center justify-between border-b border-white/10 px-6 py-6">
           <div className="flex items-center gap-3">
             <Logo width={38} height={38} />
             <div>
               <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-1.5" style={{ fontFamily: "'Times New Roman', Times, serif" }}>
                 TerraMind <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-900/80 text-emerald-200 border border-emerald-500/40">AI</span>
               </h1>
-              <p className="text-xs text-emerald-200 font-medium">Smart Agriculture</p>
+                <p className="text-xs font-medium text-brand-cyan/80">Smart Agriculture</p>
             </div>
           </div>
           
@@ -159,7 +159,7 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
                     onNavigate={closeSidebar}
                     className={`group flex items-center justify-between rounded-2xl px-4 py-3.5 transition-all duration-300 ${
                       active
-                        ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-600/40 font-bold"
+                          ? "bg-gradient-gemini text-white shadow-lg shadow-brand-purple/20 font-bold"
                         : "text-slate-200 hover:bg-emerald-900/50 hover:text-white"
                     }`}
                   >
@@ -194,14 +194,14 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
             <p className="mt-2 text-xs text-slate-200 leading-relaxed font-medium">
               {t.aiBannerDesc}
             </p>
-            <Link href="/ai" onClick={closeSidebar} className="mt-4 block text-center w-full rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 py-2.5 text-xs font-bold text-white shadow-md shadow-emerald-600/30 hover:opacity-90 transition">
+            <Link href="/ai" onClick={closeSidebar} className="mt-4 block w-full rounded-xl bg-gradient-gemini py-2.5 text-center text-xs font-bold text-white shadow-lg shadow-brand-purple/20 transition hover:brightness-110">
               {t.aiConsultBtn}
             </Link>
           </div>
         </div>
 
         {/* User Profile Footer */}
-        <div className="shrink-0 border-t border-emerald-900/20 bg-[#0A100C] p-4">
+        <div className="shrink-0 border-t border-white/10 bg-black/40 p-4 backdrop-blur-md">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="relative">

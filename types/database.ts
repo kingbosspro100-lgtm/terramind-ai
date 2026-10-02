@@ -75,6 +75,7 @@ export interface MarketPrice {
   product_name: string;
   market_name: string;
   country: SupportedCountry;
+  department?: string | null;
   price_fcfa: number;
   unit: string;
   recorded_at: string;

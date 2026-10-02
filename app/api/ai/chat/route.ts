@@ -21,13 +21,29 @@ export async function POST(request: Request) {
     );
   }
 
-  if (!isAiProviderConfigured()) {
+  const parsedBody: unknown = await request.json().catch(() => ({}));
+  const body = parsedBody && typeof parsedBody === "object" && !Array.isArray(parsedBody)
+    ? parsedBody as Record<string, unknown>
+    : {};
+  const requestKeyHeader = request.headers.get("x-gemini-key")?.trim();
+  const requestKeyBody = typeof body.apiKey === "string" ? body.apiKey.trim() : "";
+  const requestKey = requestKeyHeader || requestKeyBody || undefined;
+
+  if (requestKey && requestKey.length > 512) {
+    return NextResponse.json(
+      { success: false, error: "INVALID_API_KEY", message: "La clé Gemini fournie est invalide." },
+      { status: 400 }
+    );
+  }
+
+  if (!isAiProviderConfigured(requestKey)) {
     return NextResponse.json(
       {
+        success: false,
         error: "AI_NOT_CONFIGURED",
         message: "L’assistant IA n’est pas configuré. L’administrateur doit ajouter GEMINI_API_KEY dans les variables d’environnement serveur.",
       },
-      { status: 503 }
+      { status: 400 }
     );
   }
 
@@ -63,7 +79,6 @@ export async function POST(request: Request) {
     }
 
     // 4. Validation des données du corps de la requête
-    const body = await request.json().catch(() => ({}));
     const userMessage = typeof body.message === "string" ? body.message.trim() : "";
     const MAX_MESSAGE_LENGTH = 4000;
 
@@ -80,9 +95,9 @@ export async function POST(request: Request) {
     // Traitement des images jointes (compatibilité image unique et tableau d'images)
     const rawImages: string[] = [];
     if (body.images && Array.isArray(body.images)) {
-      rawImages.push(...body.images.filter((img: any) => typeof img === "string" && img.startsWith("data:")));
+      rawImages.push(...body.images.filter((image): image is string => typeof image === "string" && image.startsWith("data:")));
     }
-    const singleImagePayload: string | undefined = body.file || body.image;
+    const singleImagePayload = typeof body.file === "string" ? body.file : typeof body.image === "string" ? body.image : undefined;
     if (singleImagePayload && typeof singleImagePayload === "string" && singleImagePayload.startsWith("data:")) {
       if (!rawImages.includes(singleImagePayload)) {
         rawImages.push(singleImagePayload);
@@ -148,12 +163,13 @@ export async function POST(request: Request) {
     // 7. Appel au fournisseur IA (Gemini Flash dynamique)
     let aiResponseText = "";
     try {
-      aiResponseText = await generateAIResponse(messagesToAI, undefined, userContext);
-    } catch (aiError: any) {
-      console.error("Erreur lors de l'appel au fournisseur IA:", aiError);
+      aiResponseText = await generateAIResponse(messagesToAI, undefined, userContext, requestKey);
+    } catch (aiError) {
+      console.error("Erreur lors de l'appel au fournisseur IA:", aiError instanceof Error ? aiError.message : aiError);
       // Ne PAS consommer de quota si le fournisseur IA échoue
       return NextResponse.json(
         {
+          success: false,
           error: "AI_PROVIDER_ERROR",
           message: "Gemini n’a pas pu répondre. Vérifiez la clé GEMINI_API_KEY, le quota gratuit Google AI Studio et la disponibilité du modèle.",
         },
@@ -169,6 +185,7 @@ export async function POST(request: Request) {
       console.error("Impossible d'enregistrer la consommation du quota IA:", quotaError);
       return NextResponse.json(
         {
+          success: false,
           error: "AI_QUOTA_UNAVAILABLE",
           message: "Gemini a répondu, mais le quota IA n’a pas pu être enregistré. Appliquez la migration Supabase 20260929_ai_quota_rpc.sql puis réessayez.",
         },
@@ -178,11 +195,12 @@ export async function POST(request: Request) {
 
     // 9. Retour de la réponse au client
     return NextResponse.json({
+      success: true,
       message: aiResponseText,
       quota: updatedQuota,
     });
-  } catch (error: any) {
-    console.error("Erreur serveur dans /api/ai/chat:", error);
+  } catch (error) {
+    console.error("Erreur serveur dans /api/ai/chat:", error instanceof Error ? error.message : error);
     return NextResponse.json(
       {
         error: "INTERNAL_SERVER_ERROR",

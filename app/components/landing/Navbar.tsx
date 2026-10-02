@@ -66,7 +66,7 @@ export default function Navbar() {
           <Link href="/login" className="rounded-xl px-5 py-2.5 text-base font-extrabold text-emerald-300 hover:text-white hover:bg-emerald-950/60 transition">
             {publicT.navLogin}
           </Link>
-          <Link href="/tarifs" className="rounded-xl bg-gradient-to-r from-emerald-600 via-green-600 to-lime-500 px-6 py-2.5 text-base font-extrabold text-white shadow-xl shadow-emerald-600/30 transition hover:scale-105">
+          <Link href="/tarifs" className="rounded-xl bg-gradient-gemini px-6 py-2.5 text-base font-extrabold text-white shadow-lg shadow-brand-purple/20 transition hover:scale-105 hover:brightness-110">
             {publicT.navRegisterFree}
           </Link>
         </div>
@@ -77,7 +77,7 @@ export default function Navbar() {
       </div>
 
       {open && (
-        <div className="border-t border-emerald-900/30 bg-[#0E0C1F] lg:hidden">
+        <div className="border-t border-white/10 bg-black/50 backdrop-blur-md lg:hidden">
           <nav className="flex flex-col p-6 space-y-2">
             {links.map((link) => (
               <Link key={link.href} href={link.href} onClick={() => setOpen(false)} className="rounded-xl px-4 py-3 text-lg font-bold text-emerald-300 hover:bg-emerald-950/60 hover:text-white">

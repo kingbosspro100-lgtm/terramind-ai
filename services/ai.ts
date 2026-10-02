@@ -57,17 +57,18 @@ RÈGLES IMPORTANTES :
 Ton objectif est de fournir une réponse réellement utile, spécifique et adaptée au message de l'utilisateur.
 `;
 
-export function isAiProviderConfigured(): boolean {
-  const apiKey = process.env.GEMINI_API_KEY || process.env.AI_API_KEY;
+export function isAiProviderConfigured(requestKey?: string): boolean {
+  const apiKey = requestKey || process.env.GEMINI_API_KEY || process.env.AI_API_KEY;
   return Boolean(apiKey && apiKey !== "your_gemini_api_key_here");
 }
 
 export async function generateAIResponse(
   messages: ChatMessage[],
   systemPromptOverride?: string,
-  userContext?: string
+  userContext?: string,
+  requestKey?: string,
 ): Promise<string> {
-  const apiKey = process.env.GEMINI_API_KEY || process.env.AI_API_KEY;
+  const apiKey = requestKey || process.env.GEMINI_API_KEY || process.env.AI_API_KEY;
 
   if (!apiKey || apiKey === "your_gemini_api_key_here") {
     console.error("Clé GEMINI_API_KEY / AI_API_KEY invalide ou manquante dans l'environnement.");
@@ -135,11 +136,12 @@ export async function generateAIResponse(
   // Modèles valides Gemini ordonnés par préférence et repli automatique (fallback)
   const candidateModels = [...new Set([
     process.env.GEMINI_MODEL,
-    "gemini-3.8-flash",
     "gemini-flash-latest",
+    "gemini-3.8-flash",
+    "gemini-2.5-flash",
   ].filter((model): model is string => Boolean(model)))];
 
-  let lastError: any = null;
+  let lastError: unknown = null;
 
   for (const modelName of candidateModels) {
     try {
@@ -158,8 +160,8 @@ export async function generateAIResponse(
       if (text && text.trim()) {
         return text.trim();
       }
-    } catch (err: any) {
-      console.warn(`Tentative modèle ${modelName} échouée:`, err.message || err);
+    } catch (err) {
+      console.warn(`Tentative modèle ${modelName} échouée:`, err instanceof Error ? err.message : err);
       lastError = err;
     }
   }

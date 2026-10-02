@@ -8,6 +8,8 @@ import type { MarketPrice, SupportedCountry } from "@/types/database";
 
 export default function MarketsPage() {
   const [country, setCountry] = useState<SupportedCountry | "all">("all");
+  const [department, setDepartment] = useState("all");
+  const [product, setProduct] = useState("all");
   const [search, setSearch] = useState("");
   const [prices, setPrices] = useState<MarketPrice[]>([]);
   const [loading, setLoading] = useState(true);
@@ -30,7 +32,13 @@ export default function MarketsPage() {
     return () => { active = false; };
   }, [country]);
 
-  const filtered = prices.filter((price) => `${price.product_name} ${price.market_name} ${price.country}`.toLocaleLowerCase("fr").includes(search.toLocaleLowerCase("fr")));
+  const departments = [...new Set(prices.map((price) => price.department).filter((value): value is string => Boolean(value)))].sort((a, b) => a.localeCompare(b, "fr"));
+  const products = [...new Set(prices.map((price) => price.product_name))].sort((a, b) => a.localeCompare(b, "fr"));
+  const filtered = prices.filter((price) =>
+    (department === "all" || price.department === department) &&
+    (product === "all" || price.product_name === product) &&
+    `${price.product_name} ${price.market_name} ${price.country} ${price.department ?? ""}`.toLocaleLowerCase("fr").includes(search.toLocaleLowerCase("fr"))
+  );
 
   return (
     <main className="mx-auto max-w-6xl space-y-7 pb-12">
@@ -38,12 +46,14 @@ export default function MarketsPage() {
       <section className="flex flex-col gap-3 sm:flex-row">
         <label className="relative flex-1"><span className="sr-only">Rechercher un produit ou un marché</span><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Produit ou marché" className="w-full rounded-lg border border-slate-700 bg-[#100E18] py-2.5 pl-9 pr-3 text-sm text-white outline-none focus:border-emerald-500" /></label>
         <label className="text-sm text-slate-300">Pays <select value={country} onChange={(event) => setCountry(event.target.value as SupportedCountry | "all")} className="ml-2 rounded-lg border border-slate-700 bg-[#100E18] px-3 py-2.5 text-white"><option value="all">Tous les pays</option>{SUPPORTED_COUNTRIES.map((name) => <option key={name}>{name}</option>)}</select></label>
+        <label className="text-sm text-slate-300">Produit <select value={product} onChange={(event) => setProduct(event.target.value)} className="ml-2 rounded-lg border border-white/10 bg-brand-card px-3 py-2.5 text-white"><option value="all">Tous</option>{products.map((name) => <option key={name}>{name}</option>)}</select></label>
+        <label className="text-sm text-slate-300">Département <select value={department} onChange={(event) => setDepartment(event.target.value)} className="ml-2 rounded-lg border border-white/10 bg-brand-card px-3 py-2.5 text-white"><option value="all">Tous</option>{departments.map((name) => <option key={name}>{name}</option>)}</select></label>
       </section>
       {error && <p role="alert" className="rounded-lg border border-red-800 bg-red-950/40 px-4 py-3 text-sm text-red-200">Les relevés n&apos;ont pas pu être chargés : {error}</p>}
       {loading ? <p className="py-12 text-center text-sm text-slate-400">Chargement des relevés…</p> : filtered.length === 0 ? (
         <div className="rounded-lg border border-dashed border-slate-700 px-6 py-14 text-center"><h2 className="font-semibold text-white">Aucun relevé disponible</h2><p className="mx-auto mt-2 max-w-lg text-sm text-slate-400">Aucun prix n&apos;est encore enregistré pour ce filtre. Les valeurs affichées ici proviennent de la table des observations de marché, pas de données estimées.</p></div>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-slate-800 bg-[#100E18]"><table className="w-full min-w-[620px] text-left text-sm"><thead className="border-b border-slate-800 text-xs uppercase text-slate-400"><tr><th className="px-4 py-3 font-medium">Produit</th><th className="px-4 py-3 font-medium">Marché</th><th className="px-4 py-3 font-medium">Pays</th><th className="px-4 py-3 font-medium">Prix</th><th className="px-4 py-3 font-medium">Relevé</th></tr></thead><tbody className="divide-y divide-slate-800">{filtered.map((price) => <tr key={price.id}><td className="px-4 py-3 font-medium text-white">{price.product_name}</td><td className="px-4 py-3 text-slate-300">{price.market_name}</td><td className="px-4 py-3 text-slate-300">{price.country}</td><td className="px-4 py-3 font-semibold text-amber-300">{price.price_fcfa.toLocaleString("fr-FR")} FCFA / {price.unit}</td><td className="px-4 py-3 text-slate-400">{new Date(price.recorded_at).toLocaleDateString("fr-FR")}</td></tr>)}</tbody></table></div>
+        <div className="overflow-x-auto rounded-lg border border-white/10 bg-brand-card/90 shadow-[0_0_32px_rgb(0_114_255/7%)] backdrop-blur-md"><table className="w-full min-w-[720px] text-left text-sm"><thead className="border-b border-white/10 text-xs uppercase text-slate-400"><tr><th className="px-4 py-3 font-medium">Produit</th><th className="px-4 py-3 font-medium">Marché</th><th className="px-4 py-3 font-medium">Pays</th><th className="px-4 py-3 font-medium">Département</th><th className="px-4 py-3 font-medium">Prix</th><th className="px-4 py-3 font-medium">Relevé</th></tr></thead><tbody className="divide-y divide-white/5">{filtered.map((price) => <tr key={price.id}><td className="px-4 py-3 font-medium text-white">{price.product_name}</td><td className="px-4 py-3 text-slate-300">{price.market_name}</td><td className="px-4 py-3 text-slate-300">{price.country}</td><td className="px-4 py-3 text-slate-300">{price.department || "—"}</td><td className="px-4 py-3 font-semibold text-brand-gold">{price.price_fcfa.toLocaleString("fr-FR")} FCFA / {price.unit}</td><td className="px-4 py-3 text-slate-400">{new Date(price.recorded_at).toLocaleDateString("fr-FR")}</td></tr>)}</tbody></table></div>
       )}
     </main>
   );
