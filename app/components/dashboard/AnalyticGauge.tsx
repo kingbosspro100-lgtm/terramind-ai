@@ -98,7 +98,7 @@ export default function AnalyticGauge({
   }));
 
   return (
-    <div className="rounded-3xl bg-gradient-to-b from-[#181436] to-[#050A07] border border-emerald-900/30 p-6 md:p-8 shadow-2xl flex flex-col justify-between h-full">
+    <div className="cosmic-panel flex h-full flex-col justify-between rounded-2xl p-6 md:p-8">
 
       {/* Header */}
       <div className="flex items-start justify-between">
@@ -149,8 +149,8 @@ export default function AnalyticGauge({
                   r="5"
                   fill={
                     dot.active
-                      ? "#00F5A0"
-                      : "#302B5A"
+                      ? "#00C6FF"
+                      : "#252936"
                   }
                   className="transition-all duration-500"
                 />

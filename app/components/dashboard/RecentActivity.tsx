@@ -58,14 +58,14 @@ export default function RecentActivity({
   activities = [],
 }: Props) {
   return (
-    <div className="rounded-3xl bg-gradient-to-b from-[#181436] to-[#050A07] border border-emerald-900/30 p-6 md:p-8 shadow-2xl">
+    <div className="cosmic-panel rounded-2xl p-6 md:p-8">
 
       <h2 className="text-xl font-bold text-white tracking-wide mb-6 flex items-center gap-2">
         📋 Activité récente
       </h2>
 
       {activities.length === 0 ? (
-        <div className="rounded-2xl border border-white/5 bg-[#0A100C] p-6 text-center">
+        <div className="rounded-xl border border-white/10 bg-black/20 p-6 text-center">
           <p className="text-sm text-slate-400">
             Aucune activité récente.
           </p>
@@ -82,7 +82,7 @@ export default function RecentActivity({
             return (
               <div
                 key={activity.id}
-                className={`border-l-4 ${style.border} pl-4 py-1.5 bg-[#0A100C] rounded-r-2xl border-y border-r border-emerald-900/20`}
+                className={`border-l-4 ${style.border} rounded-r-xl border-y border-r border-white/10 bg-black/20 py-1.5 pl-4`}
               >
                 <p className="font-bold text-white text-sm">
                   {activity.title}

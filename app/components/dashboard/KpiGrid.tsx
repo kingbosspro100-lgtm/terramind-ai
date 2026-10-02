@@ -43,7 +43,7 @@ export default function KpiGrid({
         return (
           <div
             key={index}
-            className="group relative rounded-3xl bg-gradient-to-b from-[#181436] to-[#050A07] border border-emerald-900/30 p-6 shadow-xl transition-all duration-300 hover:border-emerald-500/40 hover:shadow-emerald-900/20 hover:-translate-y-1"
+            className="cosmic-panel group relative rounded-2xl p-6 transition-all duration-300 hover:-translate-y-1 hover:border-brand-cyan/40 hover:shadow-brand-cyan/10"
           >
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-950/60 text-emerald-300 border border-emerald-800/30 group-hover:bg-emerald-600 group-hover:text-white transition-colors duration-300">

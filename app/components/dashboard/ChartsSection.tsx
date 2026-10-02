@@ -80,7 +80,7 @@ export default function ChartsSection({
   const hasData = chartData.length > 0;
 
   return (
-    <div className="rounded-3xl bg-gradient-to-b from-[#181436] to-[#050A07] border border-emerald-900/30 p-6 md:p-8 shadow-2xl">
+    <div className="cosmic-panel rounded-2xl p-6 md:p-8">
 
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
@@ -129,12 +129,12 @@ export default function ChartsSection({
                 >
                   <stop
                     offset="5%"
-                    stopColor="#10B981"
+                    stopColor="#00C6FF"
                     stopOpacity={0.35}
                   />
                   <stop
                     offset="95%"
-                    stopColor="#10B981"
+                    stopColor="#00C6FF"
                     stopOpacity={0}
                   />
                 </linearGradient>
@@ -148,12 +148,12 @@ export default function ChartsSection({
                 >
                   <stop
                     offset="5%"
-                    stopColor="#F59E0B"
+                    stopColor="#FF2A85"
                     stopOpacity={0.25}
                   />
                   <stop
                     offset="95%"
-                    stopColor="#F59E0B"
+                    stopColor="#FF2A85"
                     stopOpacity={0}
                   />
                 </linearGradient>
@@ -161,14 +161,14 @@ export default function ChartsSection({
 
               <XAxis
                 dataKey="date"
-                stroke="#6B678A"
+                stroke="#8490A7"
                 fontSize={11}
                 tickLine={false}
                 axisLine={false}
               />
 
               <YAxis
-                stroke="#6B678A"
+                stroke="#8490A7"
                 fontSize={11}
                 tickLine={false}
                 axisLine={false}
@@ -196,19 +196,19 @@ export default function ChartsSection({
                   );
 
                   return (
-                    <div className="rounded-2xl bg-[#1A153A] border border-emerald-500/30 px-4 py-3 shadow-xl">
+                    <div className="rounded-xl border border-brand-cyan/30 bg-brand-card/95 px-4 py-3 shadow-xl backdrop-blur-md">
                       <p className="text-xs font-semibold text-slate-300">
                         {label}
                       </p>
 
-                      <p className="mt-2 text-xs text-emerald-400">
+                      <p className="mt-2 text-xs text-brand-cyan">
                         Revenus :{" "}
                         <span className="font-bold text-white">
                           {formatAmount(revenus)}
                         </span>
                       </p>
 
-                      <p className="mt-1 text-xs text-amber-400">
+                      <p className="mt-1 text-xs text-brand-pink">
                         Dépenses :{" "}
                         <span className="font-bold text-white">
                           {formatAmount(depenses)}

@@ -38,20 +38,20 @@ export default async function DashboardPage() {
 
       <section className="grid gap-4 md:grid-cols-3">
         {[
-          { title: "Météo", href: "/dashboard/weather", description: "Conditions et alertes", icon: CloudSun, tint: "from-sky-500/20 to-emerald-500/10" },
-          { title: "Prix des marchés", href: "/dashboard/markets", description: "Relevés par pays", icon: ChartNoAxesCombined, tint: "from-amber-500/20 to-orange-500/10" },
-          { title: "TerraMind Store", href: "/dashboard/store", description: "Produits et ventes", icon: Store, tint: "from-emerald-500/20 to-teal-500/10" },
+          { title: "Météo", href: "/dashboard/weather", description: "Conditions et alertes", icon: CloudSun, tint: "from-brand-cyan/20 to-brand-blue/5" },
+          { title: "Prix des marchés", href: "/dashboard/markets", description: "Relevés par pays", icon: ChartNoAxesCombined, tint: "from-brand-gold/20 to-brand-pink/5" },
+          { title: "TerraMind Store", href: "/dashboard/store", description: "Produits et ventes", icon: Store, tint: "from-brand-purple/20 to-brand-pink/5" },
         ].map(({ title, href, description, icon: Icon, tint }) => (
           <Link
             key={title}
             href={href}
-            className={`group rounded-2xl border border-emerald-900/25 bg-gradient-to-br ${tint} p-4 text-white shadow-lg shadow-slate-950/20 transition hover:-translate-y-0.5 hover:border-emerald-500/40`}
+            className={`group rounded-xl border border-white/10 bg-gradient-to-br ${tint} p-4 text-white shadow-lg shadow-black/25 backdrop-blur-md transition hover:-translate-y-0.5 hover:border-brand-cyan/40`}
           >
             <div className="flex items-center justify-between">
-              <div className="rounded-xl bg-slate-900/60 p-2.5 text-emerald-300">
+              <div className="rounded-xl border border-white/10 bg-brand-dark/70 p-2.5 text-brand-cyan">
                 <Icon className="h-5 w-5" />
               </div>
-              <span className="text-[10px] uppercase tracking-[0.2em] text-emerald-200/80">Accès</span>
+              <span className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Accès</span>
             </div>
             <h3 className="mt-4 text-lg font-bold text-white">{title}</h3>
             <p className="mt-1 text-sm text-slate-300">{description}</p>

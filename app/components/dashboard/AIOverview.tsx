@@ -10,7 +10,7 @@ import Link from "next/link";
 
 export default function AIOverview() {
   return (
-    <section className="overflow-hidden rounded-3xl bg-gradient-to-b from-[#181436] to-[#050A07] border border-emerald-900/30 p-6 md:p-8 text-white shadow-2xl">
+    <section className="cosmic-panel overflow-hidden rounded-2xl p-6 text-white md:p-8">
 
       {/* En-tête */}
 
@@ -18,7 +18,7 @@ export default function AIOverview() {
 
         <div className="flex items-center gap-4">
 
-          <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-white text-emerald-700 shadow-lg">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-brand-cyan/30 bg-brand-cyan/10 text-brand-cyan shadow-lg shadow-brand-cyan/10">
 
             <Bot size={34} />
 
@@ -32,7 +32,7 @@ export default function AIOverview() {
 
             </h2>
 
-            <p className="text-green-100">
+            <p className="text-slate-300">
 
               Assistant agricole intelligent
 
@@ -48,7 +48,7 @@ export default function AIOverview() {
 
       {/* Carte principale */}
 
-      <div className="mt-8 rounded-3xl bg-white/10 p-7 backdrop-blur-xl">
+      <div className="mt-8 rounded-xl border border-brand-purple/25 bg-white/[0.04] p-6 backdrop-blur-xl">
 
         <h3 className="text-2xl font-bold">
 
@@ -56,12 +56,12 @@ export default function AIOverview() {
 
         </h3>
 
-        <p className="mt-4 leading-8 text-green-100">
+        <p className="mt-4 leading-8 text-slate-200">
 
           Les données météo indiquent de bonnes conditions pour les
           prochains jours. Les cultures de maïs présentent un excellent
           potentiel de croissance. Une irrigation légère est recommandée
-          en fin d'après-midi afin d'optimiser le rendement.
+          en fin d&apos;après-midi afin d&apos;optimiser le rendement.
 
         </p>
 
@@ -73,9 +73,9 @@ export default function AIOverview() {
 
         <div className="rounded-2xl bg-white/10 p-6 backdrop-blur">
 
-          <TrendingUp className="mb-4 text-lime-300" />
+          <TrendingUp className="mb-4 text-brand-gold" />
 
-          <p className="text-green-100">
+          <p className="text-slate-300">
 
             Rendement prévu
 
@@ -91,9 +91,9 @@ export default function AIOverview() {
 
         <div className="rounded-2xl bg-white/10 p-6 backdrop-blur">
 
-          <Brain className="mb-4 text-cyan-300" />
+          <Brain className="mb-4 text-brand-cyan" />
 
-          <p className="text-green-100">
+          <p className="text-slate-300">
 
             Score IA
 
@@ -109,9 +109,9 @@ export default function AIOverview() {
 
         <div className="rounded-2xl bg-white/10 p-6 backdrop-blur">
 
-          <TriangleAlert className="mb-4 text-yellow-300" />
+          <TriangleAlert className="mb-4 text-brand-pink" />
 
-          <p className="text-green-100">
+          <p className="text-slate-300">
 
             Alertes
 
@@ -129,7 +129,7 @@ export default function AIOverview() {
 
       {/* Conseils */}
 
-      <div className="mt-8 rounded-3xl bg-white/10 p-7 backdrop-blur">
+      <div className="mt-8 rounded-xl border border-brand-cyan/20 bg-white/[0.04] p-6 backdrop-blur">
 
         <h3 className="text-xl font-bold">
 
