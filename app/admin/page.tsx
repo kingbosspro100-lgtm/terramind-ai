@@ -1,410 +1,84 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { isAdmin } from "@/services/admin";
 import { getAdminAnalytics } from "@/services/adminData";
 
-export default async function AdminPage() {
-  const admin = await isAdmin();
+const EMPTY_ANALYTICS = {
+  users: { total: 0, free: 0, pro: 0, enterprise: 0, paying: 0 },
+  revenue: { total: 0, mrr: 0, arpu: 0 },
+  acquisition: { totalExpenses: 0, cac: 0 },
+  churn: { rate: 0, cancelled: 0 },
+  ltv: { value: 0, ratio: 0, healthy: true },
+  subscriptions: { active: 0, total: 0 },
+};
 
-  if (!admin) {
-    redirect("/dashboard");
+const ADMIN_LINKS = [
+  { href: "/admin/utilisateurs", label: "Utilisateurs", detail: "Profils et activité" },
+  { href: "/admin/revenus", label: "Revenus", detail: "Paiements et abonnements" },
+  { href: "/admin/analytics", label: "Analytics", detail: "Tendances et croissance" },
+  { href: "/admin/avis", label: "Avis", detail: "Retours des utilisateurs" },
+  { href: "/admin/markets", label: "Prix des marchés", detail: "Importer les relevés" },
+] as const;
+
+export default async function AdminPage() {
+  if (!(await isAdmin())) redirect("/dashboard");
+
+  let analytics = EMPTY_ANALYTICS;
+  let analyticsUnavailable = false;
+
+  try {
+    analytics = await getAdminAnalytics();
+  } catch (error) {
+    console.error("Chargement des statistiques admin impossible:", error);
+    analyticsUnavailable = true;
   }
 
-  const analytics = await getAdminAnalytics();
-
-  const formatMoney = (value: number) =>
-    `${Math.round(value).toLocaleString("fr-FR")} FCFA`;
-
-  const formatPercent = (value: number) =>
-    `${(value * 100).toFixed(2)}%`;
+  const money = (value: number) => `${Math.round(value).toLocaleString("fr-FR")} FCFA`;
+  const metrics = [
+    { label: "Utilisateurs", value: analytics.users.total.toLocaleString("fr-FR"), detail: `${analytics.users.paying} comptes payants` },
+    { label: "Revenus confirmés", value: money(analytics.revenue.total), detail: "Paiements enregistrés" },
+    { label: "Revenu mensuel récurrent", value: money(analytics.revenue.mrr), detail: `${analytics.subscriptions.active} abonnements actifs` },
+    { label: "Résiliations", value: `${(analytics.churn.rate * 100).toFixed(1)}%`, detail: `${analytics.churn.cancelled} comptes` },
+  ];
 
   return (
-    <main className="min-h-screen bg-slate-950 text-white">
-      <div className="mx-auto max-w-7xl px-6 py-10">
-
-        {/* HEADER */}
-
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+    <main className="min-h-screen bg-slate-950 px-5 py-8 text-white sm:px-8">
+      <div className="mx-auto max-w-7xl">
+        <header className="flex flex-col justify-between gap-4 border-b border-white/10 pb-6 sm:flex-row sm:items-end">
           <div>
-            <p className="text-sm font-medium text-emerald-400">
-              TerraMind AI
-            </p>
-
-            <h1 className="mt-1 text-3xl font-bold">
-              Administration
-            </h1>
-
-            <p className="mt-2 text-slate-400">
-              Vue globale de l'activité de la plateforme.
-            </p>
+            <p className="text-sm font-medium text-emerald-400">TerraMind AI</p>
+            <h1 className="mt-1 text-3xl font-bold">Administration</h1>
+            <p className="mt-2 text-sm text-slate-400">Vue de l’activité et des données enregistrées.</p>
           </div>
+          <Link href="/dashboard" className="w-fit rounded-lg border border-white/15 px-4 py-2 text-sm text-slate-200 hover:bg-white/5">
+            Retour au dashboard
+          </Link>
+        </header>
 
-          <a
-            href="/dashboard"
-            className="w-fit rounded-xl border border-white/10 px-4 py-2 text-sm text-slate-300 transition hover:bg-white/5"
-          >
-            ← Retour au dashboard
-          </a>
-        </div>
+        {analyticsUnavailable && (
+          <p role="status" className="mt-6 rounded-xl border border-amber-700/40 bg-amber-950/30 px-4 py-3 text-sm text-amber-100">
+            Les statistiques ne sont pas disponibles pour le moment. Les indicateurs affichent zéro; vérifie la configuration Supabase serveur.
+          </p>
+        )}
 
-        {/* BUSINESS KPIs */}
-
-        <section className="mt-10">
-
-          <h2 className="text-lg font-semibold">
-            Performance financière
-          </h2>
-
-          <div className="mt-4 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-
-            {/* MRR */}
-
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
-              <p className="text-sm text-slate-400">
-                MRR
-              </p>
-
-              <p className="mt-2 text-2xl font-bold text-emerald-400">
-                {formatMoney(analytics.revenue.mrr)}
-              </p>
-
-              <p className="mt-2 text-xs text-slate-500">
-                Revenus récurrents mensuels
-              </p>
-            </div>
-
-            {/* REVENUE */}
-
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
-              <p className="text-sm text-slate-400">
-                Revenus totaux
-              </p>
-
-              <p className="mt-2 text-2xl font-bold">
-                {formatMoney(
-                  analytics.revenue.total
-                )}
-              </p>
-
-              <p className="mt-2 text-xs text-slate-500">
-                Paiements confirmés
-              </p>
-            </div>
-
-            {/* CAC */}
-
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
-              <p className="text-sm text-slate-400">
-                CAC
-              </p>
-
-              <p className="mt-2 text-2xl font-bold">
-                {formatMoney(
-                  analytics.acquisition.cac
-                )}
-              </p>
-
-              <p className="mt-2 text-xs text-slate-500">
-                Coût d'acquisition client
-              </p>
-            </div>
-
-            {/* LTV */}
-
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
-              <p className="text-sm text-slate-400">
-                LTV
-              </p>
-
-              <p className="mt-2 text-2xl font-bold">
-                {formatMoney(
-                  analytics.ltv.value
-                )}
-              </p>
-
-              <p className="mt-2 text-xs text-slate-500">
-                Valeur vie client estimée
-              </p>
-            </div>
-
-          </div>
+        <section aria-label="Indicateurs principaux" className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {metrics.map((metric) => (
+            <article key={metric.label} className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+              <h2 className="text-sm text-slate-400">{metric.label}</h2>
+              <p className="mt-3 text-2xl font-bold text-white">{metric.value}</p>
+              <p className="mt-2 text-xs text-slate-500">{metric.detail}</p>
+            </article>
+          ))}
         </section>
 
-        {/* GROWTH */}
-
-        <section className="mt-10">
-
-          <h2 className="text-lg font-semibold">
-            Croissance
-          </h2>
-
-          <div className="mt-4 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-
-            {/* USERS */}
-
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
-              <p className="text-sm text-slate-400">
-                Utilisateurs
-              </p>
-
-              <p className="mt-2 text-3xl font-bold">
-                {analytics.users.total}
-              </p>
-
-              <p className="mt-2 text-xs text-slate-500">
-                Tous les comptes
-              </p>
-            </div>
-
-            {/* PAYING */}
-
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
-              <p className="text-sm text-slate-400">
-                Clients payants
-              </p>
-
-              <p className="mt-2 text-3xl font-bold text-emerald-400">
-                {analytics.users.paying}
-              </p>
-
-              <p className="mt-2 text-xs text-slate-500">
-                Abonnements actifs
-              </p>
-            </div>
-
-            {/* SUBSCRIPTIONS */}
-
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
-              <p className="text-sm text-slate-400">
-                Abonnements actifs
-              </p>
-
-              <p className="mt-2 text-3xl font-bold">
-                {analytics.subscriptions.active}
-              </p>
-
-              <p className="mt-2 text-xs text-slate-500">
-                Sur {analytics.subscriptions.total} au total
-              </p>
-            </div>
-
-            {/* CHURN */}
-
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
-              <p className="text-sm text-slate-400">
-                Churn
-              </p>
-
-              <p className="mt-2 text-3xl font-bold">
-                {formatPercent(
-                  analytics.churn.rate
-                )}
-              </p>
-
-              <p className="mt-2 text-xs text-slate-500">
-                {analytics.churn.cancelled} résiliation(s)
-              </p>
-            </div>
-
-          </div>
+        <section className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {ADMIN_LINKS.map((item) => (
+            <Link key={item.href} href={item.href} className="rounded-xl border border-white/10 bg-white/[0.03] p-5 transition hover:border-emerald-500/40 hover:bg-white/[0.05]">
+              <h2 className="font-semibold text-white">{item.label}</h2>
+              <p className="mt-2 text-sm text-slate-400">{item.detail}</p>
+            </Link>
+          ))}
         </section>
-
-        {/* LTV / CAC */}
-
-        <section className="mt-10">
-
-          <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-8">
-
-            <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-
-              <div>
-                <p className="text-sm text-slate-400">
-                  Unit Economics
-                </p>
-
-                <h2 className="mt-1 text-2xl font-bold">
-                  LTV / CAC
-                </h2>
-
-                <p className="mt-2 max-w-xl text-sm text-slate-500">
-                  Mesure combien de valeur TerraMind
-                  génère par rapport au coût nécessaire
-                  pour acquérir un client.
-                </p>
-              </div>
-
-              <div className="text-left md:text-right">
-
-                <p
-                  className={`text-5xl font-bold ${
-                    analytics.ltv.healthy
-                      ? "text-emerald-400"
-                      : "text-orange-400"
-                  }`}
-                >
-                  {analytics.ltv.ratio.toFixed(2)}x
-                </p>
-
-                <p className="mt-2 text-sm text-slate-400">
-                  Objectif : ≥ 3x
-                </p>
-
-              </div>
-
-            </div>
-
-            <div className="mt-8 h-3 overflow-hidden rounded-full bg-white/10">
-
-              <div
-                className={`h-full rounded-full ${
-                  analytics.ltv.healthy
-                    ? "bg-emerald-400"
-                    : "bg-orange-400"
-                }`}
-                style={{
-                  width: `${Math.min(
-                    analytics.ltv.ratio * 20,
-                    100
-                  )}%`,
-                }}
-              />
-
-            </div>
-
-            <div className="mt-3 flex justify-between text-xs text-slate-500">
-              <span>0x</span>
-              <span>1x</span>
-              <span>2x</span>
-              <span>3x</span>
-              <span>5x+</span>
-            </div>
-
-          </div>
-
-        </section>
-
-        {/* PLANS */}
-
-        <section className="mt-10">
-
-          <h2 className="text-lg font-semibold">
-            Répartition des utilisateurs
-          </h2>
-
-          <div className="mt-4 grid gap-5 md:grid-cols-3">
-
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
-              <p className="text-sm text-slate-400">
-                Free
-              </p>
-
-              <p className="mt-2 text-3xl font-bold">
-                {analytics.users.free}
-              </p>
-            </div>
-
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
-              <p className="text-sm text-slate-400">
-                Pro
-              </p>
-
-              <p className="mt-2 text-3xl font-bold text-emerald-400">
-                {analytics.users.pro}
-              </p>
-            </div>
-
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
-              <p className="text-sm text-slate-400">
-                Enterprise
-              </p>
-
-              <p className="mt-2 text-3xl font-bold">
-                {analytics.users.enterprise}
-              </p>
-            </div>
-
-          </div>
-
-        </section>
-
-        {/* NAVIGATION */}
-
-        <section className="mt-10 grid gap-4 md:grid-cols-3 xl:grid-cols-6">
-
-          <a
-            href="/admin/revenus"
-            className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 transition hover:border-emerald-400/30 hover:bg-white/[0.05]"
-          >
-            <p className="font-semibold">
-              💰 Revenus détaillés
-            </p>
-
-            <p className="mt-2 text-sm text-slate-500">
-              Consulter toutes les transactions.
-            </p>
-          </a>
-
-          <a
-            href="/admin/analytics"
-            className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 transition hover:border-emerald-400/30 hover:bg-white/[0.05]"
-          >
-            <p className="font-semibold">
-              📊 Analytics
-            </p>
-
-            <p className="mt-2 text-sm text-slate-500">
-              Analyser les performances de TerraMind.
-            </p>
-          </a>
-
-          <a
-            href="/admin/avis"
-            className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 transition hover:border-emerald-400/30 hover:bg-white/[0.05]"
-          >
-            <p className="font-semibold">
-              💬 Avis & Témoignages
-            </p>
-
-            <p className="mt-2 text-sm text-slate-500">
-              Gérer les retours communauté.
-            </p>
-          </a>
-
-          <a
-            href="/admin/utilisateurs"
-            className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 transition hover:border-emerald-400/30 hover:bg-white/[0.05]"
-          >
-            <p className="font-semibold">Utilisateurs & données</p>
-            <p className="mt-2 text-sm text-slate-500">Profils, contacts et activité enregistrée.</p>
-          </a>
-
-          <a
-            href="/admin/markets"
-            className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 transition hover:border-emerald-400/30 hover:bg-white/[0.05]"
-          >
-            <p className="font-semibold">
-              Import prix de marché
-            </p>
-
-            <p className="mt-2 text-sm text-slate-500">
-              Ajouter des relevés vérifiés depuis un fichier.
-            </p>
-          </a>
-
-          <a
-            href="/dashboard"
-            className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 transition hover:border-emerald-400/30 hover:bg-white/[0.05]"
-          >
-            <p className="font-semibold">
-              🌾 Dashboard utilisateur
-            </p>
-
-            <p className="mt-2 text-sm text-slate-500">
-              Retourner à l'application.
-            </p>
-          </a>
-
-        </section>
-
       </div>
     </main>
   );
