@@ -45,15 +45,11 @@ Une clé Gemini serveur (`GEMINI_API_KEY`) peut être remplacée pour une requê
 
 ## Alertes météo par courriel
 
-Appliquer `supabase/migrations/20261002_weather_alert_deliveries.sql`. Configurer `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`, `RESEND_API_KEY` et `RESEND_FROM_EMAIL` côté serveur. Vercel appelle `/api/cron/weather-alerts` toutes les cinq heures; le service déduplique les alertes par exploitation et par date.
+Appliquer `supabase/migrations/20261002_weather_alert_deliveries.sql`. Configurer `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`, `RESEND_API_KEY` et `RESEND_FROM_EMAIL` côté serveur. Sur Vercel Hobby, `/api/cron/weather-alerts` est planifié chaque jour à 04:00 UTC; une exécution toutes les cinq heures nécessite un plan Vercel qui autorise cette fréquence. Les alertes sont dédupliquées par exploitation et par date.
 
 ## Prix de marché par région
 
 Appliquer `supabase/migrations/20261002_market_price_departments.sql` avant d’importer la colonne facultative `department`. Les cours affichés sont les observations saisies/importées par l’équipe; aucune valeur fictive n’est fournie comme prix réel.
-
-## Configuration des alertes météo
-
-Appliquer `supabase/migrations/20261002_weather_alert_deliveries.sql` et configurer `CRON_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY` et `RESEND_FROM_EMAIL` dans l’hébergement. Le cron Vercel est prévu toutes les cinq heures; la fréquence réellement disponible dépend du plan Vercel.
 
 ## Suppression différée des comptes
 
